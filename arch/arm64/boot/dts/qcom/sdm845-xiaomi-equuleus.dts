@@ -135,6 +135,18 @@
 		regulator-max-microvolt = <3700000>;
 	};
 
+	disp_vddio_vreg: disp-vddio-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "disp_vddio_vreg";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		startup-delay-us = <4000>;
+		gpio = <&tlmm 23 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
 	/*
 	 * Apparently RPMh does not provide support for PM8998 S4 because it
 	 * is always-on; model it as a fixed regulator.
@@ -411,6 +423,8 @@
 			regulator-min-microvolt = <2856000>;
 			regulator-max-microvolt = <3008000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			regulator-boot-on;
+			regulator-always-on;
 		};
 
 		vreg_lvs1a_1p8: lvs1 {
@@ -565,6 +579,47 @@
 	vdda-pll-supply = <&vdda_usb2_ss_core>;
 };
 
+&gpi_dma1 {
+	status = "okay";
+};
+
+/* Touchscreen bring-up: QUPv3 SE14 uses GPI DMA for I2C transfers. */
+&i2c14 {
+	status = "okay";
+
+	dmas = <&gpi_dma1 0 6 QCOM_GPI_I2C>,
+	       <&gpi_dma1 1 6 QCOM_GPI_I2C>;
+	dma-names = "tx", "rx";
+
+	touchscreen@49 {
+		compatible = "st,fts";
+		reg = <0x49>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <31 IRQ_TYPE_LEVEL_LOW>;
+		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+		pinctrl-0 = <&touch_active>;
+		pinctrl-1 = <&touch_irq_suspend &touch_reset_suspend>;
+		vdd-supply = <&disp_vddio_vreg>;
+		avdd-supply = <&vreg_l28a_3p0>;
+		fts,pwr-reg-name = "avdd";
+		fts,bus-reg-name = "vdd";
+		fts,irq-gpio = <&tlmm 31 GPIO_ACTIVE_LOW>;
+		fts,reset-gpio-enable;
+		fts,reset-gpio = <&tlmm 32 GPIO_ACTIVE_HIGH>;
+		fts,irq-flags = <0x2008>;
+		fts,x-max = <1080>;
+		fts,y-max = <2248>;
+		fts,config-array-size = <1>;
+		fts,default-fw-name = "st_fts_e8.ftb";
+
+		fts_config_0 {
+			fts,tp-vendor = <0x48>;
+			fts,fw-name = "st_fts_e8.ftb";
+			fts,limit-name = "stm_fts_production_limits.csv";
+		};
+	};
+};
+
 &wifi {
 	status = "okay";
 	vdd-0.8-cx-mx-supply = <&vreg_l5a_0p8>;
@@ -599,4 +654,25 @@
 
 &tlmm {
 	gpio-reserved-ranges = <0 4>, <81 4>;
+
+	touch_active: touch-active-state {
+		pins = "gpio31", "gpio32";
+		function = "gpio";
+		drive-strength = <16>;
+		bias-pull-up;
+	};
+
+	touch_irq_suspend: touch-irq-suspend-state {
+		pins = "gpio31";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	touch_reset_suspend: touch-reset-suspend-state {
+		pins = "gpio32";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
 };

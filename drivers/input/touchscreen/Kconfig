@@ -1214,6 +1214,17 @@ config TOUCHSCREEN_STMFTS
 	  To compile this driver as a module, choose M here: the
 	  module will be called stmfts.
 
+config TOUCHSCREEN_ST_FTS_V521
+	tristate "ST FTS V521 I2C touchscreen"
+	depends on I2C
+	depends on INPUT
+	help
+	  Support the ST FingerTipS V521 controller used by Xiaomi equuleus.
+
+config TOUCHSCREEN_ST_FTS_V521_DEBUG_FS
+	bool "ST FTS V521 debugfs support"
+	depends on TOUCHSCREEN_ST_FTS_V521 && DEBUG_FS
+
 config TOUCHSCREEN_STMPE
 	tristate "STMicroelectronics STMPE touchscreens"
 	depends on MFD_STMPE
