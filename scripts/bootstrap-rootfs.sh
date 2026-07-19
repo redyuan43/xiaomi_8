@@ -19,7 +19,6 @@ fail() {
 grep -Eq '^ID="?postmarketos"?$' /etc/os-release || fail "bootstrap must run from postmarketOS"
 [ "$(findmnt -n -o SOURCE /)" = /dev/sda21 ] || fail "unexpected userdata root"
 [ ! -e "$TARGET" ] || fail "$TARGET already exists"
-[ ! -e "$STAGE" ] || fail "$STAGE already exists; inspect it manually"
 for file in "$BASE" "$OVERLAY" "$PACKAGES" "$PD_SOURCE" "$INPUT_DIR/SHA256SUMS"; do
     [ -f "$file" ] || fail "missing $file"
 done
@@ -30,19 +29,28 @@ available_kb=$(df -Pk / | awk 'NR == 2 {print $4}')
 
 cleanup_mounts() {
     for path in run dev/pts dev sys proc; do
-        mountpoint -q "$STAGE/$path" && umount "$STAGE/$path" || true
+        mountpoint -q "$STAGE/$path" && umount -R "$STAGE/$path" || true
     done
 }
 trap cleanup_mounts EXIT INT TERM
 
-mkdir -p "$STAGE"
-tar -xpf "$BASE" -C "$STAGE"
+if [ -e "$STAGE" ]; then
+    grep -Eq '^ID=ubuntu$' "$STAGE/etc/os-release" || fail "$STAGE is not an Ubuntu rootfs"
+    printf 'Resuming validated Ubuntu stage at %s\n' "$STAGE"
+else
+    mkdir -p "$STAGE"
+    tar -xpf "$BASE" -C "$STAGE"
+fi
 mkdir -p "$STAGE/etc/apt" "$STAGE/etc/NetworkManager/system-connections"
-cat > "$STAGE/etc/apt/sources.list" <<'EOF'
+if [ -f "$STAGE/etc/apt/sources.list.d/ubuntu.sources" ]; then
+    rm -f "$STAGE/etc/apt/sources.list"
+else
+    cat > "$STAGE/etc/apt/sources.list" <<'EOF'
 deb http://ports.ubuntu.com/ubuntu-ports noble main restricted universe multiverse
 deb http://ports.ubuntu.com/ubuntu-ports noble-updates main restricted universe multiverse
 deb http://ports.ubuntu.com/ubuntu-ports noble-security main restricted universe multiverse
 EOF
+fi
 cp -L /etc/resolv.conf "$STAGE/etc/resolv.conf"
 cat > "$STAGE/usr/sbin/policy-rc.d" <<'EOF'
 #!/bin/sh
@@ -67,7 +75,8 @@ chroot "$STAGE" /usr/bin/env DEBIAN_FRONTEND=noninteractive apt-get install -y -
 tar -xpf "$OVERLAY" -C "$STAGE"
 mkdir -p "$STAGE/usr/local/src"
 tar -xpf "$PD_SOURCE" -C "$STAGE/usr/local/src"
-chroot "$STAGE" make -C /usr/local/src/pd-mapper-1.1 clean all
+chroot "$STAGE" make -C /usr/local/src/pd-mapper-1.1 clean
+chroot "$STAGE" make -C /usr/local/src/pd-mapper-1.1
 chroot "$STAGE" make -C /usr/local/src/pd-mapper-1.1 install
 
 mkdir -p "$STAGE/lib/modules" "$STAGE/lib/firmware"
@@ -83,7 +92,8 @@ if [ -r /etc/NetworkManager/system-connections/330_5G.nmconnection ]; then
     chmod 0600 "$STAGE/etc/NetworkManager/system-connections/330_5G.nmconnection"
 fi
 
-chroot "$STAGE" useradd -m -s /bin/bash -G sudo,video,input,netdev ivan
+chroot "$STAGE" getent passwd ivan >/dev/null 2>&1 || \
+    chroot "$STAGE" useradd -m -s /bin/bash -G sudo,video,input,netdev ivan
 password_hash=$(awk -F: '$1 == "ivan" {print $2}' /etc/shadow)
 [ -n "$password_hash" ] && chroot "$STAGE" usermod -p "$password_hash" ivan
 if [ -r /home/ivan/.ssh/authorized_keys ]; then

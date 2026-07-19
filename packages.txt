@@ -34,6 +34,7 @@ bluez-obexd
 obexftp
 alsa-utils
 ffmpeg
+file
 rmtfs
 tqftpserv
 protection-domain-mapper
@@ -58,4 +59,3 @@ xsel
 fonts-noto-cjk
 epiphany-browser
 iptables
-
