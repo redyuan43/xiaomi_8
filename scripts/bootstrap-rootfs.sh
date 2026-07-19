@@ -16,7 +16,7 @@ fail() {
 
 [ "$(id -u)" -eq 0 ] || fail "run as root"
 [ "$(uname -m)" = aarch64 ] || fail "expected aarch64 host"
-grep -q '^ID=postmarketos$' /etc/os-release || fail "bootstrap must run from postmarketOS"
+grep -Eq '^ID="?postmarketos"?$' /etc/os-release || fail "bootstrap must run from postmarketOS"
 [ "$(findmnt -n -o SOURCE /)" = /dev/sda21 ] || fail "unexpected userdata root"
 [ ! -e "$TARGET" ] || fail "$TARGET already exists"
 [ ! -e "$STAGE" ] || fail "$STAGE already exists; inspect it manually"
