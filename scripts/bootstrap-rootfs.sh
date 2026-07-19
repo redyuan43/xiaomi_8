@@ -73,6 +73,13 @@ chroot "$STAGE" /usr/bin/env DEBIAN_FRONTEND=noninteractive apt-get update
 chroot "$STAGE" /usr/bin/env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $package_args
 
 tar -xpf "$OVERLAY" -C "$STAGE"
+chown -R root:root \
+    "$STAGE/etc/equuleus" \
+    "$STAGE/etc/modprobe.d" \
+    "$STAGE/etc/systemd" \
+    "$STAGE/etc/sysctl.d" \
+    "$STAGE/usr/local/bin" \
+    "$STAGE/usr/local/libexec"
 mkdir -p "$STAGE/usr/local/src"
 tar -xpf "$PD_SOURCE" -C "$STAGE/usr/local/src"
 chroot "$STAGE" make -C /usr/local/src/pd-mapper-1.1 clean
