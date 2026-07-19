@@ -16,10 +16,10 @@ cp -f "$PD_SOURCE" "$OUT/pd-mapper-1.1.tar.gz"
 tar -C "$ROOT/rootfs-overlay" -czf "$OUT/equuleus-ubuntu24-overlay.tar.gz" .
 cp -f "$ROOT/packages.txt" "$OUT/packages.txt"
 cp -f "$ROOT/scripts/bootstrap-rootfs.sh" "$OUT/bootstrap-rootfs.sh"
-sha256sum "$OUT"/ubuntu-base-24.04.4-base-arm64.tar.gz \
-    "$OUT"/pd-mapper-1.1.tar.gz \
-    "$OUT"/equuleus-ubuntu24-overlay.tar.gz \
-    "$OUT"/packages.txt \
-    "$OUT"/bootstrap-rootfs.sh > "$OUT/SHA256SUMS"
+(cd "$OUT" && sha256sum \
+    ubuntu-base-24.04.4-base-arm64.tar.gz \
+    pd-mapper-1.1.tar.gz \
+    equuleus-ubuntu24-overlay.tar.gz \
+    packages.txt \
+    bootstrap-rootfs.sh > SHA256SUMS)
 printf 'Prepared inputs in %s\n' "$OUT"
-
