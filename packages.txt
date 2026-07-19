@@ -46,6 +46,7 @@ pkg-config
 xfce4
 xfce4-goodies
 tigervnc-standalone-server
+tigervnc-tools
 dbus-x11
 xterm
 onboard
