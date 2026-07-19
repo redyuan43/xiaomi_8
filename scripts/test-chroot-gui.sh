@@ -11,7 +11,7 @@ fail() {
 }
 
 [ "$(id -u)" -eq 0 ] || fail "run as root"
-[ -x "$TARGET/usr/bin/vncserver" ] || fail "TigerVNC is missing"
+chroot "$TARGET" test -x /usr/bin/vncserver || fail "TigerVNC is missing"
 
 cleanup() {
     chroot "$TARGET" runuser -u ivan -- env HOME=/home/ivan \
@@ -44,4 +44,3 @@ chroot "$TARGET" runuser -u ivan -- env HOME=/home/ivan USER=ivan DISPLAY="$DISP
 sleep 12
 chroot "$TARGET" pgrep -a -f epiphany
 printf 'Virtual Xfce and Epiphany chroot test passed on %s\n' "$DISPLAY"
-
