@@ -22,6 +22,10 @@ the Android boot partition.
   intentionally removes `-s` so service shutdown cannot stop MSS.
 - Keep Wi-Fi, VNC, Tailscale and login credentials out of Git and release
   archives.
+- Epiphany currently runs with the WebKit sandbox disabled because this
+  downstream 5.12 runtime rejects unprivileged user namespaces. Treat browsing
+  as experimental and remove the compatibility environment variable after a
+  kernel upgrade restores the sandbox.
 
 ## Build flow
 
@@ -34,4 +38,3 @@ the Android boot partition.
 5. Verify identity and boot it with `fastboot boot`.
 
 See `docs/ACCEPTANCE.md` for the exact validation and rollback procedure.
-

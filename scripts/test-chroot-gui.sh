@@ -16,8 +16,12 @@ chroot "$TARGET" test -x /usr/bin/vncserver || fail "TigerVNC is missing"
 cleanup() {
     chroot "$TARGET" runuser -u ivan -- env HOME=/home/ivan \
         vncserver -kill "$DISPLAY" >/dev/null 2>&1 || true
+    chroot "$TARGET" pkill -u ivan >/dev/null 2>&1 || true
+    sleep 1
     for path in run dev/pts dev sys proc; do
-        mountpoint -q "$TARGET/$path" && umount -R "$TARGET/$path" || true
+        if mountpoint -q "$TARGET/$path"; then
+            umount -R "$TARGET/$path" || umount -Rl "$TARGET/$path" || true
+        fi
     done
 }
 trap cleanup EXIT INT TERM
@@ -40,6 +44,8 @@ chroot "$TARGET" pgrep -a xfce4-session
 chroot "$TARGET" pgrep -a xfwm4
 chroot "$TARGET" curl -fsS https://example.com/ >/dev/null
 chroot "$TARGET" runuser -u ivan -- env HOME=/home/ivan USER=ivan DISPLAY="$DISPLAY" \
+    GTK_A11Y=none LIBGL_ALWAYS_SOFTWARE=1 WEBKIT_DISABLE_COMPOSITING_MODE=1 \
+    WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1 \
     sh -c 'epiphany-browser --new-window https://example.com >$HOME/.vnc/epiphany-test.log 2>&1 &'
 sleep 12
 chroot "$TARGET" pgrep -a -f epiphany
