@@ -113,7 +113,7 @@ xiaomi-equuleus-ubuntu
 EOF
 cat > "$STAGE/etc/hosts" <<'EOF'
 127.0.0.1 localhost
-127.0.1.1 xiaomi-equuleus-ubuntu
+127.0.1.1 xiaomi-equuleus-ubuntu xiaomi-equuleus
 ::1 localhost ip6-localhost ip6-loopback
 EOF
 cat > "$STAGE/etc/fstab" <<'EOF'
