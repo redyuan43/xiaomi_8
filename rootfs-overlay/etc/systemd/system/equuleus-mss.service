@@ -1,0 +1,16 @@
+[Unit]
+Description=Start Qualcomm SDM845 MSS remote processor
+Requires=rmtfs.service tqftpserv.service
+After=rmtfs.service tqftpserv.service
+Before=pd-mapper.service equuleus-wifi.service
+
+[Service]
+Type=oneshot
+ExecStart=/sbin/modprobe qcom_q6v5_mss
+ExecStart=/usr/local/libexec/equuleus-wait-remoteproc
+RemainAfterExit=yes
+# Intentionally no ExecStop: stopping MSS caused the experimental kernel to exit.
+
+[Install]
+WantedBy=multi-user.target
+

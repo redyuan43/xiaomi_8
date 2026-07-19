@@ -1,0 +1,13 @@
+[Unit]
+Description=Restrict direct VNC to Equuleus trusted interfaces
+Before=network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/equuleus-vnc-firewall
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+

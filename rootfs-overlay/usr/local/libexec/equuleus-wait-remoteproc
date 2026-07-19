@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+for _ in $(seq 1 60); do
+    for state in /sys/class/remoteproc/remoteproc*/state; do
+        [ -r "$state" ] || continue
+        if [ "$(cat "$state")" = running ]; then
+            exit 0
+        fi
+    done
+    sleep 1
+done
+echo "MSS remoteproc did not reach running state" >&2
+exit 1
+

@@ -1,0 +1,37 @@
+# Ubuntu 24.04 for Xiaomi Mi 8 Pro (equuleus)
+
+This repository contains the reproducible userspace, initramfs and service
+configuration for booting Ubuntu 24.04.4 ARM64 on the Xiaomi Mi 8 Pro. It uses
+the already verified downstream Linux `5.12.0-sdm845` kernel and never flashes
+the Android boot partition.
+
+## Layout
+
+- Android/userdata remains `/dev/sda21` and keeps the working postmarketOS root.
+- Ubuntu is installed in the isolated `/ubuntu24` directory on that filesystem.
+- The custom initramfs bind-mounts `/ubuntu24` as `/sysroot` and switches to it.
+- The physical display defaults to a text console (`multi-user.target`).
+- `gui-start`, `gui-stop` and `gui-status` manage an on-demand Xfce Xvnc session.
+
+## Safety rules
+
+- Verify `fastboot getvar product` reports `equuleus` and the bootloader is
+  unlocked before booting an image.
+- Use `fastboot boot`, never `fastboot flash boot`.
+- Do not stop a running MSS remoteproc through sysfs. The Ubuntu rmtfs override
+  intentionally removes `-s` so service shutdown cannot stop MSS.
+- Keep Wi-Fi, VNC, Tailscale and login credentials out of Git and release
+  archives.
+
+## Build flow
+
+1. Run `scripts/prepare-artifacts.sh` on the workstation.
+2. Copy the generated inputs and `scripts/bootstrap-rootfs.sh` to the running
+   postmarketOS system.
+3. Run the bootstrap script as root to create `/ubuntu24` natively on ARM64.
+4. Run `scripts/build-boot-image.sh` to produce the temporary Android boot
+   image.
+5. Verify identity and boot it with `fastboot boot`.
+
+See `docs/ACCEPTANCE.md` for the exact validation and rollback procedure.
+

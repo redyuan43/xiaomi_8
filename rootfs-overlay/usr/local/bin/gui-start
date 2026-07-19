@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+[ -s "$HOME/.vnc/passwd" ] || {
+    echo "VNC password is not configured; run: vncpasswd" >&2
+    exit 1
+}
+systemctl --user start equuleus-vnc.service
+systemctl --user --no-pager status equuleus-vnc.service
+

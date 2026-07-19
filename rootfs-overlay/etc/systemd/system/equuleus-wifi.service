@@ -1,0 +1,14 @@
+[Unit]
+Description=Load Equuleus WCN3990 Wi-Fi driver after Qualcomm services
+Requires=equuleus-mss.service pd-mapper.service
+After=equuleus-mss.service pd-mapper.service
+Before=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/sbin/modprobe ath10k_snoc
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+
