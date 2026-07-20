@@ -74,6 +74,7 @@ chroot "$STAGE" /usr/bin/env DEBIAN_FRONTEND=noninteractive apt-get install -y -
 
 tar -xpf "$OVERLAY" -C "$STAGE"
 chown -R root:root \
+    "$STAGE/etc/X11" \
     "$STAGE/etc/equuleus" \
     "$STAGE/etc/modprobe.d" \
     "$STAGE/etc/systemd" \
@@ -142,11 +143,16 @@ chroot "$STAGE" systemctl set-default multi-user.target
 chroot "$STAGE" systemctl mask display-manager.service lightdm.service 2>/dev/null || true
 chroot "$STAGE" systemctl enable NetworkManager.service ssh.service systemd-timesyncd.service
 chroot "$STAGE" systemctl enable tqftpserv.service rmtfs.service equuleus-mss.service pd-mapper.service equuleus-wifi.service equuleus-adsp.service equuleus-audio.service
+chroot "$STAGE" systemctl enable equuleus-xorg.service
 chroot "$STAGE" systemctl enable equuleus-vnc-firewall.service
 mkdir -p "$STAGE/var/lib/systemd/linger"
 touch "$STAGE/var/lib/systemd/linger/ivan"
 mkdir -p "$STAGE/home/ivan/.vnc" "$STAGE/home/ivan/.config/systemd/user/default.target.wants"
 install -m 0755 "$STAGE/etc/equuleus/vnc-xstartup" "$STAGE/home/ivan/.vnc/xstartup"
+for unit in equuleus-local-xfce.service equuleus-x0vnc.service; do
+    ln -sfn "/etc/systemd/user/$unit" \
+        "$STAGE/home/ivan/.config/systemd/user/default.target.wants/$unit"
+done
 chown -R 1000:1000 "$STAGE/home/ivan/.vnc" "$STAGE/home/ivan/.config"
 
 rm -f "$STAGE/usr/sbin/policy-rc.d"

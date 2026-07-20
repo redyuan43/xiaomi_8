@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+for _ in $(seq 1 60); do
+    if DISPLAY=:0 xset q >/dev/null 2>&1; then
+        exit 0
+    fi
+    sleep 1
+done
+
+echo "X display :0 did not become ready" >&2
+exit 1

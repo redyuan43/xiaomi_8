@@ -1,0 +1,13 @@
+[Unit]
+Description=Equuleus physical Xfce desktop
+After=default.target
+
+[Service]
+Environment=DISPLAY=:0
+ExecStartPre=/usr/local/libexec/equuleus-wait-x-display
+ExecStart=/usr/bin/dbus-run-session /usr/bin/startxfce4
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target
