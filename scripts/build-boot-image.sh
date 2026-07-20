@@ -8,7 +8,7 @@ MKBOOT=${MKBOOT:-/home/ivan/github/redmi_8/equuleus-porting/mkbootimg.py}
 BUILD="$ROOT/build"
 DIST="$ROOT/dist"
 RAMDISK_DIR="$BUILD/ramdisk"
-OUT="$DIST/equuleus-ubuntu24.04.4-linux5.12-cli-boot.img"
+OUT=${OUT:-$DIST/equuleus-ubuntu24.04.4-linux5.12-cli-boot.img}
 
 rm -rf "$BUILD"
 mkdir -p "$RAMDISK_DIR" "$DIST"
@@ -30,4 +30,3 @@ python3 "$MKBOOT" \
 file "$OUT"
 sha256sum "$OUT" | tee "$DIST/SHA256SUMS"
 printf 'Built %s\n' "$OUT"
-
