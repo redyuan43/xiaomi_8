@@ -20,6 +20,27 @@ Expected product is `equuleus`. Do not use `fastboot flash`.
 - DNS, HTTPS and time synchronization work.
 - `vncpasswd`, `gui-start`, Remmina to port `5901`, and `gui-stop` work.
 - Epiphany, Thunar, Mousepad, Xterm and Onboard start as user `ivan`.
+- `nm-applet`, `nm-connection-editor`, `blueman-applet`, and `blueman-manager`
+  start in the Xfce session.
+- `evtest` and `libinput list-devices` identify the FTS touchscreen as
+  `/dev/input/event0`.
+
+If `wlan0` is absent, recover the MSS and Wi-Fi services without stopping an
+already running remoteproc:
+
+```sh
+sudo systemctl reset-failed equuleus-mss.service equuleus-wifi.service
+sudo systemctl start equuleus-mss.service
+sudo systemctl start equuleus-wifi.service
+```
+
+Then verify all three layers rather than trusting only the service exit code:
+
+```sh
+cat /sys/class/remoteproc/remoteproc0/state
+ip link show wlan0
+nmcli device status
+```
 
 ## Bluetooth stage
 
@@ -36,4 +57,3 @@ fastboot boot /home/ivan/github/redmi_8/equuleus-porting/releases/equuleus-linux
 ```
 
 The Android boot partition and partition table are never modified.
-

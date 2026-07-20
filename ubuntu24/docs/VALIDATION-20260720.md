@@ -10,6 +10,17 @@ with `fastboot boot`; no Android partition was flashed.
 - systemd reached `running` with no failed units after the MSS startup fix.
 - USB SSH worked at `172.16.42.1`.
 - WCN3990 Wi-Fi connected to the preserved NetworkManager profile.
+- NetworkManager's Xfce tray applet and connection editor were installed and
+  started in the VNC session. Blueman's tray applet and manager also started
+  successfully without replacing the Xfce session or unmasking the display
+  manager.
+- A later live recovery reproduced the MSS registration race: `wlan0` was
+  absent while `equuleus-mss.service` was failed and remoteproc0 was offline.
+  Resetting and starting `equuleus-mss.service`, followed by
+  `equuleus-wifi.service`, brought remoteproc0 online, loaded `ath10k_snoc`,
+  created `wlan0`, and automatically reconnected the saved `330_5G` profile.
+  The recovered interface received `192.168.31.124/24`; DNS and HTTPS were
+  verified without rebooting the phone.
 - WCN3990 Bluetooth initialized through UART6 after enabling the QUP0 wrapper
   and the GPIO45-48 CTS/RTS/TX/RX pin configuration.
 - BlueZ downloaded `qca/crbtfw21.tlv` and `qca/crnv21.bin`; `hci0` reached
@@ -40,6 +51,8 @@ with `fastboot boot`; no Android partition was flashed.
   the internal loudspeaker, completing acoustic validation.
 - User `ivan` was added to the `audio` group and can access `/dev/snd` without
   sudo after a new login.
+- The FTS touchscreen remained visible to both `evtest` and `libinput` as
+  `/dev/input/event0` after the desktop management tools were installed.
 
 ## Kernel compatibility notes
 
@@ -54,6 +67,18 @@ with `fastboot boot`; no Android partition was flashed.
 - MSS registration can finish after the Wi-Fi startup service begins. The
   remoteproc wait helper therefore retries the `offline` to `start` transition
   on every polling iteration instead of checking it only once.
+- If this boot-time race still leaves MSS failed, it can be recovered without
+  rebooting or touching the remoteproc sysfs stop path:
+
+  ```sh
+  sudo systemctl reset-failed equuleus-mss.service equuleus-wifi.service
+  sudo systemctl start equuleus-mss.service
+  sudo systemctl start equuleus-wifi.service
+  ```
+
+  Success requires remoteproc0 to report `running`, `wlan0` to exist, and
+  NetworkManager to report an active Wi-Fi connection; a successful service
+  exit alone is not sufficient evidence.
 
 ## Pending
 
