@@ -38,3 +38,12 @@ the Android boot partition.
 5. Verify identity and boot it with `fastboot boot`.
 
 See `docs/ACCEPTANCE.md` for the exact validation and rollback procedure.
+
+## Tailscale
+
+Install from Tailscale's official Ubuntu 24.04 stable repository, then authenticate:
+
+```sh
+sudo scripts/install-tailscale.sh
+sudo tailscale up --hostname=equuleus-ubuntu
+```

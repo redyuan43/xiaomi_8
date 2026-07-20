@@ -50,6 +50,10 @@ tigervnc-tools
 dbus-x11
 xterm
 onboard
+at-spi2-core
+gir1.2-atspi-2.0
+mousetweaks
+gnome-keyring
 mousepad
 thunar
 ristretto
@@ -57,6 +61,7 @@ evince
 gnome-screenshot
 xclip
 xsel
+xfonts-base
 fonts-noto-cjk
 epiphany-browser
 iptables

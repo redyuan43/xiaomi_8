@@ -7,5 +7,10 @@ export WEBKIT_DISABLE_COMPOSITING_MODE=1
 # CONFIG_USER_NS is enabled, so WebKit's bubblewrap sandbox cannot initialize.
 # Remove this compatibility setting when the kernel is upgraded.
 export WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
-export GTK_A11Y=none
-exec dbus-run-session startxfce4
+exec dbus-run-session sh -c '
+if command -v gnome-keyring-daemon >/dev/null 2>&1; then
+    eval "$(gnome-keyring-daemon --start --components=secrets)"
+    export GNOME_KEYRING_CONTROL
+fi
+exec startxfce4
+'

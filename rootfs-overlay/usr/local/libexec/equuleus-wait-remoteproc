@@ -1,6 +1,18 @@
 #!/bin/sh
 set -eu
 
+for state in /sys/class/remoteproc/remoteproc*/state; do
+    [ -r "$state" ] || continue
+    case "$(cat "$state")" in
+        running)
+            exit 0
+            ;;
+        offline)
+            printf start > "$state"
+            ;;
+    esac
+done
+
 for _ in $(seq 1 60); do
     for state in /sys/class/remoteproc/remoteproc*/state; do
         [ -r "$state" ] || continue
@@ -12,4 +24,3 @@ for _ in $(seq 1 60); do
 done
 echo "MSS remoteproc did not reach running state" >&2
 exit 1
-

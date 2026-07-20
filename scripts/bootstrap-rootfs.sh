@@ -111,6 +111,7 @@ fi
 cat > "$STAGE/etc/hostname" <<'EOF'
 xiaomi-equuleus-ubuntu
 EOF
+ln -sfn /usr/share/zoneinfo/Asia/Shanghai "$STAGE/etc/localtime"
 cat > "$STAGE/etc/hosts" <<'EOF'
 127.0.0.1 localhost
 127.0.1.1 xiaomi-equuleus-ubuntu xiaomi-equuleus
