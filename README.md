@@ -37,6 +37,15 @@ the Android boot partition.
    image.
 5. Verify identity and boot it with `fastboot boot`.
 
+To package a separately built test kernel while preserving the verified
+userspace and initramfs, set `KERNEL` and use a distinct output name:
+
+```sh
+KERNEL=/path/to/Image.gz-dtb \
+OUT="$PWD/dist/equuleus-test-boot.img" \
+scripts/build-boot-image.sh
+```
+
 See `docs/ACCEPTANCE.md` for the exact validation and rollback procedure.
 
 ## Tailscale

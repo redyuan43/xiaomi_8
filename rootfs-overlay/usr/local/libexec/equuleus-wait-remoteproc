@@ -1,24 +1,17 @@
 #!/bin/sh
 set -eu
 
-for state in /sys/class/remoteproc/remoteproc*/state; do
-    [ -r "$state" ] || continue
-    case "$(cat "$state")" in
-        running)
-            exit 0
-            ;;
-        offline)
-            printf start > "$state"
-            ;;
-    esac
-done
-
 for _ in $(seq 1 60); do
     for state in /sys/class/remoteproc/remoteproc*/state; do
         [ -r "$state" ] || continue
-        if [ "$(cat "$state")" = running ]; then
-            exit 0
-        fi
+        case "$(cat "$state")" in
+            running)
+                exit 0
+                ;;
+            offline)
+                printf start > "$state"
+                ;;
+        esac
     done
     sleep 1
 done
