@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+systemctl --user --no-pager status equuleus-vnc.service || true
+ss -ltnp 2>/dev/null | grep ':5901' || true
+

@@ -1,0 +1,14 @@
+[Unit]
+Description=On-demand Equuleus Xfce virtual desktop
+After=default.target
+
+[Service]
+Type=forking
+ExecStartPre=/usr/bin/test -s %h/.vnc/passwd
+ExecStart=/usr/bin/vncserver :1 -geometry 1600x900 -depth 24 -localhost no -xstartup %h/.vnc/xstartup
+ExecStop=/usr/bin/vncserver -kill :1
+Restart=no
+
+[Install]
+WantedBy=default.target
+

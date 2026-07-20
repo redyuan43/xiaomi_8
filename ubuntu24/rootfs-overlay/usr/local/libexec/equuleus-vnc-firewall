@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+
+IPT=/usr/sbin/iptables-legacy
+IP6T=/usr/sbin/ip6tables-legacy
+
+apply_rules() {
+    tool=$1
+    "$tool" -N EQUULEUS_VNC 2>/dev/null || "$tool" -F EQUULEUS_VNC
+    "$tool" -C INPUT -p tcp --dport 5901 -j EQUULEUS_VNC 2>/dev/null || \
+        "$tool" -I INPUT 1 -p tcp --dport 5901 -j EQUULEUS_VNC
+    "$tool" -A EQUULEUS_VNC -i lo -j ACCEPT
+    "$tool" -A EQUULEUS_VNC -i usb0 -j ACCEPT
+    "$tool" -A EQUULEUS_VNC -i wlan0 -j ACCEPT
+    "$tool" -A EQUULEUS_VNC -i tailscale0 -j ACCEPT
+    "$tool" -A EQUULEUS_VNC -j DROP
+}
+
+modprobe iptable_filter
+modprobe ip6table_filter
+apply_rules "$IPT"
+apply_rules "$IP6T"
