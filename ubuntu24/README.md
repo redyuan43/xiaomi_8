@@ -47,6 +47,7 @@ scripts/build-boot-image.sh
 ```
 
 See `docs/ACCEPTANCE.md` for the exact validation and rollback procedure.
+See `docs/AUDIO.md` for WCD9340 microphone and TAS2557 speaker setup.
 
 ## Tailscale
 

@@ -1,9 +1,16 @@
 #!/bin/sh
 set -eu
 
+expected_name=${1:-}
+
 for _ in $(seq 1 60); do
     for state in /sys/class/remoteproc/remoteproc*/state; do
         [ -r "$state" ] || continue
+        remoteproc=${state%/state}
+        if [ -n "$expected_name" ] &&
+           [ "$(cat "$remoteproc/name")" != "$expected_name" ]; then
+            continue
+        fi
         case "$(cat "$state")" in
             running)
                 exit 0
@@ -15,5 +22,5 @@ for _ in $(seq 1 60); do
     done
     sleep 1
 done
-echo "MSS remoteproc did not reach running state" >&2
+echo "Remote processor ${expected_name:-device} did not reach running state" >&2
 exit 1

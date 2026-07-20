@@ -1,0 +1,12 @@
+[Unit]
+Description=Configure Xiaomi Mi 8 Pro main microphone route
+After=equuleus-adsp.service
+Requires=equuleus-adsp.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/equuleus-audio-route
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
