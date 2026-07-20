@@ -320,6 +320,10 @@ ccflags-y += -DCONFIG_TAS2559_CODEC
 ccflags-y += -DDEBUG
 obj-$(CONFIG_SND_SOC_TAS2559) += snd-soc-tas2559.o
 
+snd-soc-tas2557-objs := tas2557-core.o tas2557-regmap.o tas2557-codec.o
+ccflags-y += -DCONFIG_TAS2557_CODEC -DCONFIG_TAS2557_REGMAP
+obj-$(CONFIG_SND_SOC_TAS2557) += snd-soc-tas2557.o
+
 obj-$(CONFIG_SND_SOC_88PM860X)	+= snd-soc-88pm860x.o
 obj-$(CONFIG_SND_SOC_AB8500_CODEC)	+= snd-soc-ab8500-codec.o
 obj-$(CONFIG_SND_SOC_AC97_CODEC)	+= snd-soc-ac97.o

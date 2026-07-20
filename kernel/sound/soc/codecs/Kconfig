@@ -1834,6 +1834,13 @@ config SND_SOC_TAS2559
 	tristate "Texas Instruments TAS2559 speaker amplifier"
 	depends on I2C
 
+config SND_SOC_TAS2557
+	tristate "Texas Instruments TAS2557 speaker amplifier"
+	depends on I2C
+	help
+	  Enable support for the TAS2557 smart speaker amplifier used by
+	  Xiaomi Mi 8 family devices.
+
 config SND_SOC_LPASS_RX_MACRO
 	depends on COMMON_CLK
 	tristate "Qualcomm RX Macro in LPASS(Low Power Audio SubSystem)"
