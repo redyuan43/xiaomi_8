@@ -10,8 +10,15 @@ the Android boot partition.
 - Android/userdata remains `/dev/sda21` and keeps the working postmarketOS root.
 - Ubuntu is installed in the isolated `/ubuntu24` directory on that filesystem.
 - The custom initramfs bind-mounts `/ubuntu24` as `/sysroot` and switches to it.
-- The physical display defaults to a text console (`multi-user.target`).
-- `gui-start`, `gui-stop` and `gui-status` manage an on-demand Xfce Xvnc session.
+- The physical display runs an Xorg `fbdev` Xfce session at 2248x1080, rotated
+  clockwise for landscape use. The FTS touchscreen transform matches that
+  rotation.
+- VNC port 5901 shares that physical Xfce session through
+  `x0tigervncserver`; Remmina and the phone therefore operate on the same
+  desktop. Configure the password once with `vncpasswd` as user `ivan`.
+- `gui-start`, `gui-stop` and `gui-status` remain only as a virtual-Xvnc
+  fallback. Do not run `gui-start` while the physical desktop VNC service is
+  active, because both use port 5901.
 
 ## Safety rules
 
@@ -48,6 +55,7 @@ scripts/build-boot-image.sh
 
 See `docs/ACCEPTANCE.md` for the exact validation and rollback procedure.
 See `docs/AUDIO.md` for WCD9340 microphone and TAS2557 speaker setup.
+See `docs/MULTI-DEVICE.md` to create and use the verified multi-device bundle.
 
 ## Tailscale
 

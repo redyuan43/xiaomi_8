@@ -30,6 +30,10 @@ with `fastboot boot`; no Android partition was flashed.
 - DNS and HTTPS worked after selecting NetworkManager's direct DNS backend.
 - NTP synchronized and the timezone was set to `Asia/Shanghai`.
 - Direct VNC on port 5901 completed `VncAuth` and displayed Xfce.
+- Xorg `fbdev` rendered the physical simple framebuffer as a 2248x1080
+  clockwise-rotated Xfce desktop. The FTS touchscreen was bound through
+  libinput with the corresponding transformation matrix, and the user accepted
+  the on-device landscape layout.
 - Thunar, Mousepad, Xterm, Onboard and Epiphany started in the VNC session.
 - GNOME Keyring and AT-SPI started inside the virtual desktop session.
 - Tailscale 1.98.9 ARM64 installed and `tailscaled` remained running after the
@@ -64,6 +68,9 @@ with `fastboot boot`; no Android partition was flashed.
 - WebKit's bubblewrap sandbox cannot create an unprivileged user namespace.
   Epiphany therefore uses the documented compatibility environment variable.
 - The VNC desktop uses software rendering. DRI acceleration is not expected.
+- The physical desktop uses the bootloader-provided simple framebuffer rather
+  than DRM/KMS. It is suitable for Xorg `fbdev` but not yet a native Wayland
+  target for Phosh or Plasma Mobile.
 - MSS registration can finish after the Wi-Fi startup service begins. The
   remoteproc wait helper therefore retries the `offline` to `start` transition
   on every polling iteration instead of checking it only once.
@@ -88,3 +95,7 @@ with `fastboot boot`; no Android partition was flashed.
 - Simultaneous microphone loopback remains unsupported. The QDSP6 MultiMedia1
   frontend rejected full-duplex parameter setup, so microphone and speaker
   acceptance tests are intentionally sequential.
+- A K808 Bluetooth keyboard has paired but has not yet produced verified input
+  events. The next temporary boot image builds `CONFIG_UHID=y`; acceptance
+  requires BlueZ to create an input event device and keystrokes to reach the
+  physical Xfce session.
