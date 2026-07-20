@@ -1,0 +1,47 @@
+#!/bin/sh
+set -eu
+
+card=${1:-0}
+attempts=${EQUULEUS_AUDIO_WAIT_ATTEMPTS:-60}
+
+while ! amixer -c "$card" info >/dev/null 2>&1; do
+    attempts=$((attempts - 1))
+    [ "$attempts" -gt 0 ] || {
+        echo "ALSA card $card did not become ready" >&2
+        exit 1
+    }
+    sleep 1
+done
+
+# Xiaomi stock Tavil main-mic path, translated to mainline control names.
+amixer -q -c "$card" cset name='MultiMedia1 Mixer SLIMBUS_0_TX' on
+amixer -q -c "$card" cset name='AIF1_CAP Mixer SLIM TX5' on
+amixer -q -c "$card" cset name='CDC_IF TX5 MUX' DEC5
+amixer -q -c "$card" cset name='ADC MUX5' AMIC
+amixer -q -c "$card" cset name='AMIC MUX5' ADC3
+amixer -q -c "$card" cset name='ADC3 Volume' 12
+amixer -q -c "$card" cset name='DEC5 Volume' 84
+
+# TAS2557 is optional on WCD9340-only test images.  Its firmware is loaded
+# asynchronously, so wait for the 48 kHz configuration before applying the
+# device-specific calibration and enabling the QUAT MI2S route.
+if amixer -c "$card" cget name='PowerCtrl' >/dev/null 2>&1; then
+    speaker_attempts=30
+    while ! amixer -c "$card" cget name='FS' 2>/dev/null | \
+        grep -q 'values=48000'; do
+        speaker_attempts=$((speaker_attempts - 1))
+        [ "$speaker_attempts" -gt 0 ] || break
+        sleep 1
+    done
+
+    if [ "$speaker_attempts" -gt 0 ]; then
+        amixer -q -c "$card" cset \
+            name='QUAT_MI2S_RX Audio Mixer MultiMedia1' on
+        amixer -q -c "$card" cset name='SmartPA Mute' off
+        if [ -r /mnt/vendor/persist/audio/tas2557_cal.bin ]; then
+            amixer -q -c "$card" cset name='Calibration' 255
+        fi
+    else
+        echo "TAS2557 firmware did not become ready; speaker route skipped" >&2
+    fi
+fi

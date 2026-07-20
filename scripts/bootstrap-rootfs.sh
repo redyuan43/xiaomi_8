@@ -100,7 +100,8 @@ if [ -r /etc/NetworkManager/system-connections/330_5G.nmconnection ]; then
 fi
 
 chroot "$STAGE" getent passwd ivan >/dev/null 2>&1 || \
-    chroot "$STAGE" useradd -m -s /bin/bash -G sudo,video,input,netdev ivan
+    chroot "$STAGE" useradd -m -s /bin/bash -G sudo,audio,video,input,netdev ivan
+chroot "$STAGE" usermod -aG audio ivan
 password_hash=$(awk -F: '$1 == "ivan" {print $2}' /etc/shadow)
 [ -n "$password_hash" ] && chroot "$STAGE" usermod -p "$password_hash" ivan
 if [ -r /home/ivan/.ssh/authorized_keys ]; then
@@ -140,7 +141,7 @@ chmod 0600 "$STAGE/etc/NetworkManager/system-connections/equuleus-usb.nmconnecti
 chroot "$STAGE" systemctl set-default multi-user.target
 chroot "$STAGE" systemctl mask display-manager.service lightdm.service 2>/dev/null || true
 chroot "$STAGE" systemctl enable NetworkManager.service ssh.service systemd-timesyncd.service
-chroot "$STAGE" systemctl enable tqftpserv.service rmtfs.service equuleus-mss.service pd-mapper.service equuleus-wifi.service
+chroot "$STAGE" systemctl enable tqftpserv.service rmtfs.service equuleus-mss.service pd-mapper.service equuleus-wifi.service equuleus-adsp.service equuleus-audio.service
 chroot "$STAGE" systemctl enable equuleus-vnc-firewall.service
 mkdir -p "$STAGE/var/lib/systemd/linger"
 touch "$STAGE/var/lib/systemd/linger/ivan"

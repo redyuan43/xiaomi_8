@@ -1,0 +1,13 @@
+[Unit]
+Description=Start Qualcomm SDM845 audio DSP
+After=local-fs.target
+Before=sound.target
+
+[Service]
+Type=oneshot
+ExecStart=/sbin/modprobe qcom_q6v5_pas
+ExecStart=/usr/local/libexec/equuleus-wait-remoteproc remoteproc-adsp
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

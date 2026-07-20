@@ -25,6 +25,21 @@ with `fastboot boot`; no Android partition was flashed.
   iptables alternatives were changed from nft to legacy.
 - Tailnet authentication completed as `equuleus-ubuntu`. SSH and authenticated
   VNC were both tested from `ivan-ms-7b17` to the Tailscale IP.
+- ADSP firmware started automatically and WCD9340 registered the
+  `Xiaomi Mi 8 Pro` ALSA card with three QDSP6 playback/capture frontends.
+- The stock main-microphone route recorded five seconds of 48 kHz, 16-bit mono
+  PCM. The captured signal measured `-43.1 dB` mean and `-12.9 dB` peak, proving
+  that the file was not silent.
+- TAS2557 was detected at GPIO-I2C address `16-004c` as PG2.1 silicon. Its
+  28,364-byte firmware passed program, PLL, configuration and checksum loading.
+- The device-specific 442-byte TAS2557 calibration file parsed as one
+  calibration and produced `Get Cali_Re=1258411800`.
+- A conservative 48 kHz stereo playback started TAS2557, reported
+  `PowerUpFlag=0xfc`, and powered the amplifier off when the stream closed.
+- A 15-second continuous 1 kHz tone at approximately `-40 dB` was heard from
+  the internal loudspeaker, completing acoustic validation.
+- User `ivan` was added to the `audio` group and can access `/dev/snd` without
+  sudo after a new login.
 
 ## Kernel compatibility notes
 
@@ -45,3 +60,6 @@ with `fastboot boot`; no Android partition was flashed.
 - Pair, connect and reconnect a user-selected Bluetooth peripheral. Controller
   initialization and real radio scanning have passed; no peripheral was paired
   automatically because pairing changes external device state.
+- Simultaneous microphone loopback remains unsupported. The QDSP6 MultiMedia1
+  frontend rejected full-duplex parameter setup, so microphone and speaker
+  acceptance tests are intentionally sequential.
