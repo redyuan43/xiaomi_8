@@ -4838,6 +4838,15 @@ static struct ieee80211_sta_vht_cap ath10k_create_vht_cap(struct ath10k *ar)
 	vht_cap.vht_supported = 1;
 	vht_cap.cap = ar->vht_cap_info;
 
+	/*
+	 * WCN3990 must stay at 80 MHz on this device. Some APs advertise a
+	 * 160 MHz secondary center segment that is outside the CN regdomain.
+	 */
+	if (ar->hw_rev == ATH10K_HW_WCN3990)
+		vht_cap.cap &= ~(IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_MASK |
+				 IEEE80211_VHT_CAP_SHORT_GI_160 |
+				 IEEE80211_VHT_CAP_EXT_NSS_BW_MASK);
+
 	if (ar->vht_cap_info & (IEEE80211_VHT_CAP_SU_BEAMFORMEE_CAPABLE |
 				IEEE80211_VHT_CAP_MU_BEAMFORMEE_CAPABLE)) {
 		val = ath10k_mac_get_vht_cap_bf_sts(ar);
