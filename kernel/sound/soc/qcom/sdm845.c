@@ -4,8 +4,10 @@
  */
 
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/of_device.h>
+#include <dt-bindings/sound/qcom,q6asm.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -537,6 +539,29 @@ static void sdm845_add_ops(struct snd_soc_card *card)
 	}
 }
 
+static void sdm845_set_equuleus_stream_directions(struct snd_soc_card *card)
+{
+	struct snd_soc_dai_link *link;
+	int i;
+
+	if (!of_machine_is_compatible("xiaomi,equuleus"))
+		return;
+
+	for_each_card_prelinks(card, i, link) {
+		switch (link->id) {
+		case MSM_FRONTEND_DAI_MULTIMEDIA1:
+		case MSM_FRONTEND_DAI_MULTIMEDIA2:
+			link->playback_only = 1;
+			break;
+		case MSM_FRONTEND_DAI_MULTIMEDIA3:
+			link->capture_only = 1;
+			break;
+		default:
+			break;
+		}
+	}
+}
+
 static int sdm845_snd_platform_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card;
@@ -562,6 +587,8 @@ static int sdm845_snd_platform_probe(struct platform_device *pdev)
 	ret = qcom_snd_parse_of(card);
 	if (ret)
 		return ret;
+
+	sdm845_set_equuleus_stream_directions(card);
 
 	data->card = card;
 	snd_soc_card_set_drvdata(card, data);
