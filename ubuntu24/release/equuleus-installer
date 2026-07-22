@@ -117,45 +117,48 @@ cmd_verify() {
     report_dir=${2:?usage: equuleus-installer verify SSH_HOST REPORT_DIR}
     mkdir -p "$report_dir"
     report="$report_dir/acceptance.txt"
-    ssh -o BatchMode=yes -o ConnectTimeout=10 "$host" '
-        set -eu
-        echo "date_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        echo "kernel=$(uname -r)"
-        echo "root=$(findmnt -n -o SOURCE /)"
-        echo "--- input ---"
-        cat /proc/bus/input/devices
-        for code in KEY_POWER KEY_VOLUMEUP KEY_VOLUMEDOWN; do
-            found=0
-            for event in /dev/input/event*; do
-                [ -e "$event" ] || continue
-                if evtest --query "$event" EV_KEY "$code" >/dev/null 2>&1; then
-                    echo "input_code=$code device=$event"
-                    found=1
-                    break
-                fi
-            done
-            [ "$found" -eq 1 ] || echo "missing_input_code=$code"
-        done
-        echo "--- power_supply ---"
-        for path in /sys/class/power_supply/*; do
-            [ -e "$path" ] || continue
-            echo "name=$(basename "$path")"
-            for field in type status capacity charge_now charge_full charge_full_design \
-                energy_now energy_full energy_full_design voltage_now current_now; do
-                [ -r "$path/$field" ] && echo "$field=$(cat "$path/$field")"
-            done
-        done
-        echo "--- services ---"
-        systemctl is-active equuleus-xorg.service NetworkManager.service \
-            equuleus-audio.service
-        systemctl --user is-active equuleus-local-xfce.service
-        echo "--- video ---"
-        ls -l /dev/video* 2>/dev/null || true
-        command -v chromium-equuleus-v4l2 || true
-    ' > "$report"
-    grep -q '^input_code=KEY_POWER ' "$report" || fail "power key not present in acceptance report"
-    grep -q '^input_code=KEY_VOLUMEUP ' "$report" || fail "volume-up key not present in acceptance report"
-    grep -q '^input_code=KEY_VOLUMEDOWN ' "$report" || fail "volume-down key not present in acceptance report"
+    ssh -o BatchMode=yes -o ConnectTimeout=10 "$host" 'sh -s' > "$report" <<'REMOTE'
+set -eu
+echo "date_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+echo "kernel=$(uname -r)"
+echo "root=$(findmnt -n -o SOURCE /)"
+echo "--- input ---"
+cat /proc/bus/input/devices
+awk '
+    /^N: Name="pm8941_pwrkey"/ { input = "pm8941_pwrkey"; next }
+    /^N: Name="gpio-keys"/ { input = "gpio-keys"; next }
+    /^B: KEY=/ {
+        if (input == "pm8941_pwrkey" && $0 ~ /10000000000000/) {
+            print "input_code=KEY_POWER"
+        }
+        if (input == "pm8941_pwrkey" && $0 ~ /4000000000000/) {
+            print "input_code=KEY_VOLUMEDOWN"
+        }
+        if (input == "gpio-keys" && $0 ~ /8000000000000/) {
+            print "input_code=KEY_VOLUMEUP"
+        }
+    }
+' /proc/bus/input/devices
+echo "--- power_supply ---"
+for path in /sys/class/power_supply/*; do
+    [ -e "$path" ] || continue
+    echo "name=$(basename "$path")"
+    for field in type status capacity charge_now charge_full charge_full_design \
+        energy_now energy_full energy_full_design voltage_now current_now; do
+        [ -r "$path/$field" ] && echo "$field=$(cat "$path/$field")"
+    done
+done
+echo "--- services ---"
+systemctl is-active equuleus-xorg.service NetworkManager.service \
+    equuleus-audio.service
+systemctl --user is-active equuleus-local-xfce.service
+echo "--- video ---"
+ls -l /dev/video* 2>/dev/null || true
+command -v chromium-equuleus-v4l2 || true
+REMOTE
+    grep -qx 'input_code=KEY_POWER' "$report" || fail "power key not present in acceptance report"
+    grep -qx 'input_code=KEY_VOLUMEUP' "$report" || fail "volume-up key not present in acceptance report"
+    grep -qx 'input_code=KEY_VOLUMEDOWN' "$report" || fail "volume-down key not present in acceptance report"
     grep -q '^capacity=' "$report" || fail "battery capacity not present in acceptance report"
     printf 'automated_checks=passed\n' >> "$report"
     sha256sum "$report" > "$report.sha256"
