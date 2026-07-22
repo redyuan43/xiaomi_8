@@ -1,0 +1,17 @@
+[Unit]
+Description=Share the Equuleus physical desktop over VNC
+Requires=equuleus-local-xfce.service
+After=equuleus-local-xfce.service
+
+[Service]
+Type=forking
+Environment=DISPLAY=:0
+PIDFile=%h/.vnc/%H:0.pid
+ExecStartPre=/usr/bin/test -s %h/.vnc/passwd
+ExecStart=/usr/bin/x0tigervncserver -display :0 -rfbport 5901 -desktop equuleus-physical-xfce -PasswordFile %h/.vnc/passwd -SecurityTypes VncAuth,TLSVnc -localhost no
+ExecStop=/usr/bin/x0tigervncserver -kill :0
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

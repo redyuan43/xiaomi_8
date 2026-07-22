@@ -4,6 +4,7 @@ udev
 sudo
 openssh-server
 network-manager
+network-manager-gnome
 wpasupplicant
 wireless-regdb
 systemd-timesyncd
@@ -31,8 +32,12 @@ kmod
 initramfs-tools-core
 bluez
 bluez-obexd
+blueman
 obexftp
 alsa-utils
+pipewire-audio
+wireplumber
+libspa-0.2-bluetooth
 ffmpeg
 file
 rmtfs
@@ -45,7 +50,12 @@ build-essential
 pkg-config
 xfce4
 xfce4-goodies
+xserver-xorg-core
+xserver-xorg-video-fbdev
+xserver-xorg-input-libinput
+xfce4-pulseaudio-plugin
 tigervnc-standalone-server
+tigervnc-scraping-server
 tigervnc-tools
 dbus-x11
 xterm
@@ -53,6 +63,8 @@ onboard
 at-spi2-core
 gir1.2-atspi-2.0
 mousetweaks
+evtest
+libinput-tools
 gnome-keyring
 mousepad
 thunar
@@ -64,4 +76,5 @@ xsel
 xfonts-base
 fonts-noto-cjk
 epiphany-browser
+flatpak
 iptables

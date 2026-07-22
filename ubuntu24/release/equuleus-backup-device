@@ -1,0 +1,55 @@
+#!/bin/sh
+set -eu
+
+OUTPUT=${1:?usage: equuleus-backup-device OUTPUT_DIR GPG_RECIPIENT}
+RECIPIENT=${2:?usage: equuleus-backup-device OUTPUT_DIR GPG_RECIPIENT}
+SERIAL=$(cat /sys/devices/soc0/serial_number 2>/dev/null || true)
+
+[ "$(id -u)" -eq 0 ] || {
+    echo "Run this command through sudo on the Xiaomi Mi 8 Pro." >&2
+    exit 1
+}
+[ -n "$SERIAL" ] || { echo "Unable to read SoC serial number" >&2; exit 1; }
+gpg --batch --list-keys "$RECIPIENT" >/dev/null 2>&1 || {
+    echo "GPG recipient is not present in the device keyring: $RECIPIENT" >&2
+    exit 1
+}
+
+DEST="$OUTPUT/$SERIAL"
+mkdir -p "$DEST/partitions"
+chmod 0700 "$DEST"
+{
+    printf 'serial=%s\n' "$SERIAL"
+    printf 'created_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf 'compression=gzip\n'
+    printf 'encryption=openpgp\n'
+    printf 'recipient=%s\n' "$RECIPIENT"
+} > "$DEST/backup.env"
+: > "$DEST/partitions.tsv"
+
+LC_ALL=C
+export LC_ALL
+for link in /dev/disk/by-partlabel/*; do
+    [ -L "$link" ] || continue
+    label=${link##*/}
+    [ "$label" = userdata ] && continue
+    device=$(readlink -f "$link")
+    size=$(blockdev --getsize64 "$device")
+    output="$DEST/partitions/$label.img.gz.gpg"
+    printf 'Backing up %s (%s bytes)\n' "$label" "$size"
+    dd if="$device" bs=4M status=none |
+        gzip -1 |
+        gpg --batch --yes --trust-model always --recipient "$RECIPIENT" \
+            --encrypt --output "$output"
+    checksum=$(sha256sum "$output" | awk '{print $1}')
+    printf '%s\t%s\t%s\t%s\n' "$label" "$device" "$size" "$checksum" \
+        >> "$DEST/partitions.tsv"
+done
+[ -s "$DEST/partitions.tsv" ] || {
+    echo "No non-userdata partitions were found" >&2
+    exit 1
+}
+
+(cd "$DEST" && sha256sum backup.env partitions.tsv partitions/*.gpg > SHA256SUMS)
+printf 'complete\n' > "$DEST/COMPLETE"
+printf 'Encrypted backup complete: %s\n' "$DEST"

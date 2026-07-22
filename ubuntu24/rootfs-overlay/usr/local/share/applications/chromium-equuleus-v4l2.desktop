@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Chromium
+Comment=Chromium with Qualcomm Venus hardware video decoding
+Exec=/usr/local/bin/chromium-equuleus-v4l2 %U
+Icon=org.chromium.Chromium
+Terminal=false
+Categories=Network;WebBrowser;
+MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;
+StartupNotify=true

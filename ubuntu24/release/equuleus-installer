@@ -1,0 +1,204 @@
+#!/bin/sh
+set -eu
+
+SELF=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+fail() {
+    printf 'ERROR: %s\n' "$*" >&2
+    exit 1
+}
+
+fastboot_value() {
+    fastboot getvar "$1" 2>&1 |
+        sed -n "s/.*$1: *//p" |
+        head -n 1
+}
+
+preflight() {
+    command -v fastboot >/dev/null 2>&1 || fail "fastboot is not installed"
+    devices=$(fastboot devices | awk 'NF {print $1}')
+    count=$(printf '%s\n' "$devices" | awk 'NF {n++} END {print n+0}')
+    [ "$count" -eq 1 ] || fail "expected exactly one fastboot device, found $count"
+    SERIAL=$(printf '%s\n' "$devices")
+    PRODUCT=$(fastboot_value product)
+    UNLOCKED=$(fastboot_value unlocked)
+    [ "$PRODUCT" = equuleus ] || fail "refusing product '$PRODUCT'; expected equuleus"
+    case "$UNLOCKED" in
+        yes|true) ;;
+        *) fail "bootloader is not reported unlocked" ;;
+    esac
+}
+
+verify_release() {
+    [ -f "$SELF/release.env" ] || fail "missing release.env"
+    [ -f "$SELF/SHA256SUMS" ] || fail "missing SHA256SUMS"
+    (cd "$SELF" && sha256sum -c SHA256SUMS)
+    if [ -f "$SELF/SHA256SUMS.asc" ]; then
+        [ -f "$SELF/release-signing-key.gpg" ] ||
+            fail "missing release-signing-key.gpg"
+        gpgv --keyring "$SELF/release-signing-key.gpg" \
+            "$SELF/SHA256SUMS.asc" "$SELF/SHA256SUMS"
+    elif [ "${ALLOW_UNSIGNED_RC:-0}" != 1 ]; then
+        fail "release is unsigned; set ALLOW_UNSIGNED_RC=1 only for local RC testing"
+    fi
+    # shellcheck disable=SC1091
+    . "$SELF/release.env"
+    [ "${PRODUCT:-}" = equuleus ] || fail "release product is not equuleus"
+}
+
+cmd_prepare() {
+    authorized_keys=${1:?usage: equuleus-installer prepare AUTHORIZED_KEYS DEVICE_DIR}
+    device_dir=${2:?usage: equuleus-installer prepare AUTHORIZED_KEYS DEVICE_DIR}
+    verify_release
+    preflight
+    [ -s "$authorized_keys" ] || fail "authorized_keys input is empty"
+    grep -Eq '^(ssh-|ecdsa-|sk-ssh-)' "$authorized_keys" ||
+        fail "authorized_keys input does not contain an OpenSSH public key"
+    [ ! -e "$device_dir" ] || fail "refusing to overwrite device directory: $device_dir"
+    for command in mkfs.ext4 zstd python3; do
+        command -v "$command" >/dev/null 2>&1 || fail "missing command: $command"
+    done
+
+    work="$device_dir.work"
+    [ ! -e "$work" ] || fail "stale work directory exists: $work"
+    mkdir -p "$work/userdata-root/ubuntu24" "$device_dir"
+    trap 'rm -rf "$work"' EXIT INT TERM
+    zstd -dc "$SELF/rootfs.tar.zst" |
+        tar --numeric-owner --xattrs --acls -xpf - \
+            -C "$work/userdata-root/ubuntu24"
+    install -d -m 0700 -o 1000 -g 1000 \
+        "$work/userdata-root/ubuntu24/home/ivan/.ssh"
+    install -m 0600 -o 1000 -g 1000 "$authorized_keys" \
+        "$work/userdata-root/ubuntu24/home/ivan/.ssh/authorized_keys"
+    truncate -s "$USERDATA_BYTES" "$work/userdata.raw.img"
+    mkfs.ext4 -F -L userdata -m 0 -d "$work/userdata-root" \
+        "$work/userdata.raw.img"
+    python3 "$SELF/raw-to-android-sparse.py" \
+        "$work/userdata.raw.img" "$device_dir/userdata.sparse.img"
+    printf 'serial=%s\nrelease_id=%s\nuserdata_bytes=%s\n' \
+        "$SERIAL" "$RELEASE_ID" "$USERDATA_BYTES" > "$device_dir/device.env"
+    (cd "$device_dir" && sha256sum userdata.sparse.img device.env > SHA256SUMS)
+    trap - EXIT INT TERM
+    rm -rf "$work"
+    printf 'Prepared device image: %s\n' "$device_dir"
+}
+
+cmd_inspect() {
+    preflight
+    printf 'serial=%s\nproduct=%s\nunlocked=%s\n' "$SERIAL" "$PRODUCT" "$UNLOCKED"
+}
+
+cmd_install() {
+    backup_receipt=${1:?usage: equuleus-installer install BACKUP_DIR DEVICE_DIR --confirm-erase SERIAL}
+    device_dir=${2:?usage: equuleus-installer install BACKUP_DIR DEVICE_DIR --confirm-erase SERIAL}
+    flag=${3:-}
+    confirmation=${4:-}
+    verify_release
+    preflight
+    [ -f "$backup_receipt/COMPLETE" ] || fail "backup receipt is incomplete: $backup_receipt"
+    grep -qx "serial=$SERIAL" "$backup_receipt/backup.env" ||
+        fail "backup serial does not match connected device"
+    (cd "$backup_receipt" && sha256sum -c SHA256SUMS)
+    [ -f "$device_dir/device.env" ] || fail "missing prepared device image"
+    grep -qx "serial=$SERIAL" "$device_dir/device.env" ||
+        fail "prepared image serial does not match connected device"
+    grep -qx "release_id=$RELEASE_ID" "$device_dir/device.env" ||
+        fail "prepared image release does not match this bundle"
+    (cd "$device_dir" && sha256sum -c SHA256SUMS)
+    [ "$flag" = --confirm-erase ] && [ "$confirmation" = "$SERIAL" ] ||
+        fail "destructive confirmation required: --confirm-erase $SERIAL"
+    fastboot flash userdata "$device_dir/userdata.sparse.img"
+    fastboot boot "$SELF/boot.img"
+    printf 'Temporary boot started. Run verify after Linux is reachable.\n'
+}
+
+cmd_verify() {
+    host=${1:?usage: equuleus-installer verify SSH_HOST REPORT_DIR}
+    report_dir=${2:?usage: equuleus-installer verify SSH_HOST REPORT_DIR}
+    mkdir -p "$report_dir"
+    report="$report_dir/acceptance.txt"
+    ssh -o BatchMode=yes -o ConnectTimeout=10 "$host" '
+        set -eu
+        echo "date_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        echo "kernel=$(uname -r)"
+        echo "root=$(findmnt -n -o SOURCE /)"
+        echo "--- input ---"
+        cat /proc/bus/input/devices
+        for code in KEY_POWER KEY_VOLUMEUP KEY_VOLUMEDOWN; do
+            found=0
+            for event in /dev/input/event*; do
+                [ -e "$event" ] || continue
+                if evtest --query "$event" EV_KEY "$code" >/dev/null 2>&1; then
+                    echo "input_code=$code device=$event"
+                    found=1
+                    break
+                fi
+            done
+            [ "$found" -eq 1 ] || echo "missing_input_code=$code"
+        done
+        echo "--- power_supply ---"
+        for path in /sys/class/power_supply/*; do
+            [ -e "$path" ] || continue
+            echo "name=$(basename "$path")"
+            for field in type status capacity charge_now charge_full charge_full_design \
+                energy_now energy_full energy_full_design voltage_now current_now; do
+                [ -r "$path/$field" ] && echo "$field=$(cat "$path/$field")"
+            done
+        done
+        echo "--- services ---"
+        systemctl is-active equuleus-xorg.service NetworkManager.service \
+            equuleus-audio.service
+        systemctl --user is-active equuleus-local-xfce.service
+        echo "--- video ---"
+        ls -l /dev/video* 2>/dev/null || true
+        command -v chromium-equuleus-v4l2 || true
+    ' > "$report"
+    grep -q '^input_code=KEY_POWER ' "$report" || fail "power key not present in acceptance report"
+    grep -q '^input_code=KEY_VOLUMEUP ' "$report" || fail "volume-up key not present in acceptance report"
+    grep -q '^input_code=KEY_VOLUMEDOWN ' "$report" || fail "volume-down key not present in acceptance report"
+    grep -q '^capacity=' "$report" || fail "battery capacity not present in acceptance report"
+    printf 'automated_checks=passed\n' >> "$report"
+    sha256sum "$report" > "$report.sha256"
+    printf 'Acceptance report created: %s\n' "$report"
+}
+
+cmd_accept() {
+    report=${1:?usage: equuleus-installer accept REPORT --confirm SERIAL}
+    flag=${2:-}
+    confirmation=${3:-}
+    preflight
+    [ -f "$report" ] || fail "missing report: $report"
+    grep -qx 'automated_checks=passed' "$report" || fail "automated checks did not pass"
+    [ "$flag" = --confirm ] && [ "$confirmation" = "$SERIAL" ] ||
+        fail "acceptance confirmation required: --confirm $SERIAL"
+    printf 'serial=%s\nreport_sha256=%s\naccepted_utc=%s\n' \
+        "$SERIAL" "$(sha256sum "$report" | awk '{print $1}')" \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$report.accepted"
+}
+
+cmd_commit() {
+    acceptance=${1:?usage: equuleus-installer commit REPORT.accepted --confirm-flash-boot SERIAL}
+    flag=${2:-}
+    confirmation=${3:-}
+    verify_release
+    preflight
+    [ -f "$acceptance" ] || fail "missing acceptance record: $acceptance"
+    grep -qx "serial=$SERIAL" "$acceptance" || fail "acceptance serial mismatch"
+    [ "$flag" = --confirm-flash-boot ] && [ "$confirmation" = "$SERIAL" ] ||
+        fail "flash confirmation required: --confirm-flash-boot $SERIAL"
+    fastboot flash boot "$SELF/boot.img"
+    fastboot reboot
+}
+
+case "${1:-}" in
+    inspect) shift; cmd_inspect "$@" ;;
+    prepare) shift; cmd_prepare "$@" ;;
+    install) shift; cmd_install "$@" ;;
+    verify) shift; cmd_verify "$@" ;;
+    accept) shift; cmd_accept "$@" ;;
+    commit) shift; cmd_commit "$@" ;;
+    *)
+        echo "usage: equuleus-installer {inspect|prepare|install|verify|accept|commit} ..." >&2
+        exit 2
+        ;;
+esac

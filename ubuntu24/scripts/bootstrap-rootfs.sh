@@ -3,6 +3,10 @@ set -eu
 
 INPUT_DIR=${1:-/home/ivan/ubuntu24-inputs}
 TARGET=${TARGET:-/ubuntu24}
+IMPORT_SOURCE_IDENTITY=${IMPORT_SOURCE_IDENTITY:-0}
+BUILD_HOST_MODE=${BUILD_HOST_MODE:-0}
+MODULES_SOURCE=${MODULES_SOURCE:-/lib/modules/5.12.0-sdm845}
+FIRMWARE_SOURCE=${FIRMWARE_SOURCE:-/lib/firmware}
 STAGE=${TARGET}.stage
 BASE="$INPUT_DIR/ubuntu-base-24.04.4-base-arm64.tar.gz"
 OVERLAY="$INPUT_DIR/equuleus-ubuntu24-overlay.tar.gz"
@@ -16,16 +20,20 @@ fail() {
 
 [ "$(id -u)" -eq 0 ] || fail "run as root"
 [ "$(uname -m)" = aarch64 ] || fail "expected aarch64 host"
-grep -Eq '^ID="?postmarketos"?$' /etc/os-release || fail "bootstrap must run from postmarketOS"
-[ "$(findmnt -n -o SOURCE /)" = /dev/sda21 ] || fail "unexpected userdata root"
+if [ "$BUILD_HOST_MODE" != 1 ]; then
+    grep -Eq '^ID="?postmarketos"?$' /etc/os-release || fail "bootstrap must run from postmarketOS"
+    [ "$(findmnt -n -o SOURCE /)" = /dev/sda21 ] || fail "unexpected userdata root"
+fi
 [ ! -e "$TARGET" ] || fail "$TARGET already exists"
+[ -d "$MODULES_SOURCE" ] || fail "missing modules source $MODULES_SOURCE"
+[ -d "$FIRMWARE_SOURCE" ] || fail "missing firmware source $FIRMWARE_SOURCE"
 for file in "$BASE" "$OVERLAY" "$PACKAGES" "$PD_SOURCE" "$INPUT_DIR/SHA256SUMS"; do
     [ -f "$file" ] || fail "missing $file"
 done
 (cd "$INPUT_DIR" && sha256sum -c SHA256SUMS)
 
-available_kb=$(df -Pk / | awk 'NR == 2 {print $4}')
-[ "$available_kb" -ge 12582912 ] || fail "less than 12 GiB free on userdata"
+available_kb=$(df -Pk "$(dirname "$TARGET")" | awk 'NR == 2 {print $4}')
+[ "$available_kb" -ge 12582912 ] || fail "less than 12 GiB free at target"
 
 cleanup_mounts() {
     for path in run dev/pts dev sys proc; do
@@ -74,12 +82,15 @@ chroot "$STAGE" /usr/bin/env DEBIAN_FRONTEND=noninteractive apt-get install -y -
 
 tar -xpf "$OVERLAY" -C "$STAGE"
 chown -R root:root \
+    "$STAGE/etc/X11" \
     "$STAGE/etc/equuleus" \
+    "$STAGE/etc/modules-load.d" \
     "$STAGE/etc/modprobe.d" \
     "$STAGE/etc/systemd" \
     "$STAGE/etc/sysctl.d" \
     "$STAGE/usr/local/bin" \
-    "$STAGE/usr/local/libexec"
+    "$STAGE/usr/local/libexec" \
+    "$STAGE/usr/local/share"
 mkdir -p "$STAGE/usr/local/src"
 tar -xpf "$PD_SOURCE" -C "$STAGE/usr/local/src"
 chroot "$STAGE" make -C /usr/local/src/pd-mapper-1.1 clean
@@ -87,26 +98,32 @@ chroot "$STAGE" make -C /usr/local/src/pd-mapper-1.1
 chroot "$STAGE" make -C /usr/local/src/pd-mapper-1.1 install
 
 mkdir -p "$STAGE/lib/modules" "$STAGE/lib/firmware"
-cp -a /lib/modules/5.12.0-sdm845 "$STAGE/lib/modules/"
+cp -a "$MODULES_SOURCE" "$STAGE/lib/modules/5.12.0-sdm845"
 for path in qcom ath10k qca regulatory.db regulatory.db.p7s; do
-    [ -e "/lib/firmware/$path" ] && cp -a "/lib/firmware/$path" "$STAGE/lib/firmware/"
+    [ -e "$FIRMWARE_SOURCE/$path" ] && cp -a "$FIRMWARE_SOURCE/$path" "$STAGE/lib/firmware/"
 done
 chroot "$STAGE" depmod -a 5.12.0-sdm845
-
-if [ -r /etc/NetworkManager/system-connections/330_5G.nmconnection ]; then
-    cp /etc/NetworkManager/system-connections/330_5G.nmconnection \
-        "$STAGE/etc/NetworkManager/system-connections/"
-    chmod 0600 "$STAGE/etc/NetworkManager/system-connections/330_5G.nmconnection"
-fi
 
 chroot "$STAGE" getent passwd ivan >/dev/null 2>&1 || \
     chroot "$STAGE" useradd -m -s /bin/bash -G sudo,audio,video,input,netdev ivan
 chroot "$STAGE" usermod -aG audio ivan
-password_hash=$(awk -F: '$1 == "ivan" {print $2}' /etc/shadow)
-[ -n "$password_hash" ] && chroot "$STAGE" usermod -p "$password_hash" ivan
-if [ -r /home/ivan/.ssh/authorized_keys ]; then
-    install -d -m 0700 -o 1000 -g 1000 "$STAGE/home/ivan/.ssh"
-    install -m 0600 -o 1000 -g 1000 /home/ivan/.ssh/authorized_keys "$STAGE/home/ivan/.ssh/authorized_keys"
+chroot "$STAGE" passwd -l ivan
+
+if [ "$IMPORT_SOURCE_IDENTITY" = 1 ]; then
+    if [ -r /etc/NetworkManager/system-connections/330_5G.nmconnection ]; then
+        cp /etc/NetworkManager/system-connections/330_5G.nmconnection \
+            "$STAGE/etc/NetworkManager/system-connections/"
+        chmod 0600 "$STAGE/etc/NetworkManager/system-connections/330_5G.nmconnection"
+    fi
+
+    password_hash=$(awk -F: '$1 == "ivan" {print $2}' /etc/shadow)
+    [ -n "$password_hash" ] && chroot "$STAGE" usermod -p "$password_hash" ivan
+    if [ -r /home/ivan/.ssh/authorized_keys ]; then
+        install -d -m 0700 -o 1000 -g 1000 "$STAGE/home/ivan/.ssh"
+        install -m 0600 -o 1000 -g 1000 \
+            /home/ivan/.ssh/authorized_keys \
+            "$STAGE/home/ivan/.ssh/authorized_keys"
+    fi
 fi
 
 cat > "$STAGE/etc/hostname" <<'EOF'
@@ -142,11 +159,13 @@ chroot "$STAGE" systemctl set-default multi-user.target
 chroot "$STAGE" systemctl mask display-manager.service lightdm.service 2>/dev/null || true
 chroot "$STAGE" systemctl enable NetworkManager.service ssh.service systemd-timesyncd.service
 chroot "$STAGE" systemctl enable tqftpserv.service rmtfs.service equuleus-mss.service pd-mapper.service equuleus-wifi.service equuleus-adsp.service equuleus-audio.service
-chroot "$STAGE" systemctl enable equuleus-vnc-firewall.service
+chroot "$STAGE" systemctl enable equuleus-xorg.service equuleus-vnc-firewall.service
 mkdir -p "$STAGE/var/lib/systemd/linger"
 touch "$STAGE/var/lib/systemd/linger/ivan"
 mkdir -p "$STAGE/home/ivan/.vnc" "$STAGE/home/ivan/.config/systemd/user/default.target.wants"
 install -m 0755 "$STAGE/etc/equuleus/vnc-xstartup" "$STAGE/home/ivan/.vnc/xstartup"
+ln -sfn /etc/systemd/user/equuleus-local-xfce.service \
+    "$STAGE/home/ivan/.config/systemd/user/default.target.wants/equuleus-local-xfce.service"
 chown -R 1000:1000 "$STAGE/home/ivan/.vnc" "$STAGE/home/ivan/.config"
 
 rm -f "$STAGE/usr/sbin/policy-rc.d"

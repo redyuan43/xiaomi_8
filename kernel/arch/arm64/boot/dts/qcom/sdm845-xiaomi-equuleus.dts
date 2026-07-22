@@ -8,10 +8,13 @@
 /dts-v1/;
 
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 #include <dt-bindings/sound/qcom,q6afe.h>
 #include <dt-bindings/sound/qcom,q6asm.h>
 #include "sdm845.dtsi"
+#include "pm8998.dtsi"
+#include "pmi8998.dtsi"
 
 /*
  * Delete following upstream (sdm845.dtsi) reserved
@@ -78,6 +81,20 @@
 			ti,irq-gpio = <&tlmm 30 GPIO_ACTIVE_HIGH>;
 			ti,i2s-bits = <16>;
 			ti,bypass-tmax = <0>;
+		};
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&vol_up_pin_a>;
+
+		volume-up {
+			label = "Volume Up";
+			linux,code = <KEY_VOLUMEUP>;
+			gpios = <&pm8998_gpio 6 GPIO_ACTIVE_LOW>;
+			debounce-interval = <15>;
+			wakeup-source;
 		};
 	};
 
@@ -189,6 +206,33 @@
 
 		vin-supply = <&vph_pwr>;
 	};
+};
+
+&pm8998_gpio {
+	vol_up_pin_a: vol-up-active {
+		pins = "gpio6";
+		function = "normal";
+		input-enable;
+		bias-pull-up;
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_NO>;
+	};
+};
+
+&pm8998_pon {
+	resin {
+		compatible = "qcom,pm8941-resin";
+		interrupts = <0x0 0x8 1 IRQ_TYPE_EDGE_BOTH>;
+		debounce = <15625>;
+		bias-pull-up;
+		linux,code = <KEY_VOLUMEDOWN>;
+	};
+};
+
+&pmi8998_fg {
+	status = "okay";
+	qcom,max-voltage-uv = <4400000>;
+	qcom,min-voltage-uv = <3700000>;
+	qcom,battery-capacity-ua = <3000000>;
 };
 
 &adsp_pas {

@@ -1,0 +1,12 @@
+[Unit]
+Description=Install offline equuleus Chromium bundle
+Before=equuleus-local-xfce.service
+ConditionPathExists=/opt/equuleus-release/chromium/chromium.flatpak
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/equuleus-install-chromium
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target

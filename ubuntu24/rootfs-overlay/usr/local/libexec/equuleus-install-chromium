@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+
+bundle_dir=/opt/equuleus-release/chromium
+state_dir="$HOME/.local/state/equuleus"
+marker="$state_dir/chromium-v4l2-installed"
+
+[ -f "$marker" ] && exit 0
+flatpak install --user --noninteractive "$bundle_dir/runtime.flatpak"
+flatpak install --user --noninteractive "$bundle_dir/chromium.flatpak"
+"$bundle_dir/install.sh" "$bundle_dir/chrome"
+
+mkdir -p "$HOME/.config" "$state_dir"
+cat > "$HOME/.config/mimeapps.list" <<'EOF'
+[Default Applications]
+text/html=chromium-equuleus-v4l2.desktop
+x-scheme-handler/http=chromium-equuleus-v4l2.desktop
+x-scheme-handler/https=chromium-equuleus-v4l2.desktop
+EOF
+touch "$marker"
