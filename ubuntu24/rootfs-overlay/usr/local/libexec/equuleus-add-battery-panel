@@ -13,9 +13,16 @@ DBUS_SESSION_BUS_ADDRESS=$(tr '\0' '\n' < "$session_env" |
 [ -n "$DBUS_SESSION_BUS_ADDRESS" ] || exit 0
 export DBUS_SESSION_BUS_ADDRESS
 
+config_dir="$HOME/.config/xfce4/panel"
+template=/usr/local/share/equuleus/battery-panel.rc
+
 while plugin=$(xfconf-query -c "$channel" -p "/plugins/plugin-$plugin_id" \
     2>/dev/null); do
-    [ "$plugin" = battery ] && exit 0
+    if [ "$plugin" = battery ]; then
+        install -d -m 0755 "$config_dir"
+        install -m 0644 "$template" "$config_dir/battery-$plugin_id.rc"
+        exit 0
+    fi
     plugin_id=$((plugin_id + 1))
 done
 
@@ -25,6 +32,8 @@ ids=$(xfconf-query -c "$channel" -p "$panel" |
 
 xfconf-query -c "$channel" -p "/plugins/plugin-$plugin_id" \
     -n -t string -s battery
+install -d -m 0755 "$config_dir"
+install -m 0644 "$template" "$config_dir/battery-$plugin_id.rc"
 
 set --
 for id in $ids; do
