@@ -1,0 +1,13 @@
+[Unit]
+Description=Add equuleus battery indicator to the Xfce panel
+After=equuleus-local-xfce.service
+Requires=equuleus-local-xfce.service
+
+[Service]
+Type=oneshot
+Environment=DISPLAY=:0
+ExecStart=/usr/local/libexec/equuleus-add-battery-panel
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target

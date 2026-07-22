@@ -166,6 +166,8 @@ mkdir -p "$STAGE/home/ivan/.vnc" "$STAGE/home/ivan/.config/systemd/user/default.
 install -m 0755 "$STAGE/etc/equuleus/vnc-xstartup" "$STAGE/home/ivan/.vnc/xstartup"
 ln -sfn /etc/systemd/user/equuleus-local-xfce.service \
     "$STAGE/home/ivan/.config/systemd/user/default.target.wants/equuleus-local-xfce.service"
+ln -sfn /etc/systemd/user/equuleus-battery-panel.service \
+    "$STAGE/home/ivan/.config/systemd/user/default.target.wants/equuleus-battery-panel.service"
 chown -R 1000:1000 "$STAGE/home/ivan/.vnc" "$STAGE/home/ivan/.config"
 
 rm -f "$STAGE/usr/sbin/policy-rc.d"
