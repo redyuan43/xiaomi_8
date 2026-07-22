@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+profile_dir="$HOME/.var/app/org.chromium.Chromium/config/chromium-equuleus-v4l2"
+chrome_path="$HOME/.local/opt/chromium-equuleus-v4l2/chrome"
+proxy_server="${CHROMIUM_PROXY_SERVER-http://127.0.0.1:10808}"
+
+if [ -n "$proxy_server" ]; then
+	set -- --proxy-server="$proxy_server" "$@"
+fi
+
+exec /usr/bin/flatpak run \
+	--user \
+	--branch=equuleus-v4l2 \
+	--arch=aarch64 \
+	--command="$chrome_path" \
+	org.chromium.Chromium \
+	--no-sandbox \
+	--user-data-dir="$profile_dir" \
+	--disable-gpu-sandbox \
+	--ignore-gpu-blocklist \
+	--enable-features=AcceleratedVideoDecoder,AcceleratedVideoDecodeLinuxGL,LibYuvImageProcessor \
+	--disable-features=VaapiVideoDecoder,VaapiVideoEncoder,Vulkan,UseGLForScaling,PreferGLImageProcessor \
+	"$@"

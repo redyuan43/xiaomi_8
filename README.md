@@ -21,10 +21,12 @@ imports.
 - WCN3990 Bluetooth controller and radio scanning
 - Concurrent Wi-Fi, Bluetooth and Tailscale operation
 - On-demand Xfce desktop through authenticated VNC
+- WCD9340 microphone and TAS2557 internal speaker
+- Chromium H.264 playback through the Qualcomm Venus V4L2 decoder
 
-Internal speaker and microphone support is not yet implemented. See
-`ubuntu24/docs/VALIDATION-20260720.md` for the exact validated state and known
-limitations.
+See `ubuntu24/docs/VALIDATION-20260720.md` for the base system validation,
+`ubuntu24/docs/AUDIO.md` for audio, and `ubuntu24/docs/CHROMIUM-V4L2.md` for
+the Chromium hardware-decoding implementation and evidence.
 
 ## Safety
 

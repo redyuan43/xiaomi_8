@@ -1,0 +1,99 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: redyuan43 <redyuan43@gmail.com>
+Date: Wed, 22 Jul 2026 01:26:09 +0800
+Subject: [PATCH] media/gpu: use CPU-backed V4L2 output frames on fbdev
+
+The equuleus userspace runs Xorg through fbdev and llvmpipe. Venus can decode
+into V4L2 buffers, but Chromium cannot import those NV12 buffers as native
+pixmaps because the display stack has no DRI3 or scanout-capable GBM path.
+
+Keep the Venus V4L2 decoder, convert its output through LibYUV, and allocate
+the final frames as STORAGE_OWNED_MEMORY. Mojo can serialize those CPU-backed
+frames to the renderer without requiring a mailbox or native pixmap.
+
+This keeps hardware decode active while accepting a copy between the decoder
+and the software-rendered display.
+---
+ media/mojo/services/gpu_mojo_media_client_linux.cc | 43 +++++++++++++++++++---
+ 1 file changed, 39 insertions(+), 4 deletions(-)
+
+diff --git a/media/mojo/services/gpu_mojo_media_client_linux.cc b/media/mojo/services/gpu_mojo_media_client_linux.cc
+index 77036557f25b8..53e7c975f659c 100644
+--- a/media/mojo/services/gpu_mojo_media_client_linux.cc
++++ b/media/mojo/services/gpu_mojo_media_client_linux.cc
+@@ -14,9 +14,11 @@
+ #include "media/base/audio_encoder.h"
+ #include "media/base/media_log.h"
+ #include "media/base/media_switches.h"
++#include "media/base/video_frame.h"
+ #include "media/gpu/chromeos/mailbox_video_frame_converter.h"
+ #include "media/gpu/chromeos/platform_video_frame_pool.h"
+ #include "media/gpu/chromeos/simple_video_frame_converter.h"
++#include "media/gpu/chromeos/video_frame_resource.h"
+ #include "media/gpu/chromeos/video_decoder_pipeline.h"
+ 
+ namespace media {
+@@ -28,6 +30,32 @@ BASE_FEATURE(kAcceleratedVideoDecodeLinuxZeroCopyGL,
+ 
+ BASE_FEATURE(kRenderableMM21, base::FEATURE_DISABLED_BY_DEFAULT);
+ 
++#if BUILDFLAG(USE_V4L2_CODEC)
++CroStatus::Or<scoped_refptr<FrameResource>> CreateCpuVideoFrame(
++    VideoPixelFormat format,
++    const gfx::Size& coded_size,
++    const gfx::Rect& visible_rect,
++    const gfx::Size& natural_size,
++    bool use_protected,
++    bool use_linear_buffers,
++    bool needs_detiling,
++    base::TimeDelta timestamp) {
++  if (use_protected) {
++    return CroStatus::Codes::kProtectedContentUnsupported;
++  }
++
++  auto frame = VideoFrame::CreateFrame(format, coded_size, visible_rect,
++                                       natural_size, timestamp);
++  if (!frame) {
++    return CroStatus::Codes::kFailedToCreateVideoFrame;
++  }
++
++  scoped_refptr<FrameResource> resource =
++      VideoFrameResource::Create(std::move(frame));
++  return resource;
++}
++#endif
++
+ VideoDecoderType GetPreferredLinuxDecoderImplementation() {
+   // VaapiVideoDecoder flag is required for VaapiVideoDecoder.
+   if (!base::FeatureList::IsEnabled(kAcceleratedVideoDecodeLinux)) {
+@@ -193,8 +221,7 @@ class GpuMojoMediaClientLinux final : public GpuMojoMediaClient {
+             traits.media_log->Clone(), std::move(traits.oop_video_decoder),
+             /*in_video_decoder_process=*/false);
+       }
+-      case VideoDecoderType::kVaapi:
+-      case VideoDecoderType::kV4L2: {
++      case VideoDecoderType::kVaapi: {
+         auto frame_pool = std::make_unique<PlatformVideoFramePool>();
+         auto frame_converter = MailboxVideoFrameConverter::Create(
+             gpu_task_runner_, traits.get_command_buffer_stub_cb);
+@@ -204,6 +231,18 @@ class GpuMojoMediaClientLinux final : public GpuMojoMediaClient {
+             GetPreferredRenderableFourccs(gpu_preferences_, gpu_feature_info_),
+             traits.media_log->Clone(), /*oop_video_decoder=*/{},
+             /*in_video_decoder_process=*/false);
++      }
++      case VideoDecoderType::kV4L2: {
++        auto frame_pool = std::make_unique<PlatformVideoFramePool>();
++        frame_pool->SetCustomFrameAllocator(
++            base::BindRepeating(&CreateCpuVideoFrame),
++            VideoFrame::STORAGE_OWNED_MEMORY);
++        return VideoDecoderPipeline::Create(
++            gpu_workarounds_, traits.task_runner, std::move(frame_pool),
++            SimpleVideoFrameConverter::Create(),
++            GetPreferredRenderableFourccs(gpu_preferences_, gpu_feature_info_),
++            traits.media_log->Clone(), /*oop_video_decoder=*/{},
++            /*in_video_decoder_process=*/false);
+       }
+       default:
+         return nullptr;
+-- 
+2.43.0
