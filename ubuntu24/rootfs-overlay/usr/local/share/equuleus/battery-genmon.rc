@@ -1,0 +1,3 @@
+Command=/bin/sh /usr/local/libexec/equuleus-battery-status
+UseLabel=0
+UpdatePeriod=10000

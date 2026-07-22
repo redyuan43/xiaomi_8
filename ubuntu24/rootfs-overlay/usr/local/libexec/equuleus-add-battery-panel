@@ -3,7 +3,6 @@ set -eu
 
 channel=xfce4-panel
 panel=/panels/panel-1/plugin-ids
-plugin_id=9
 
 panel_pid=$(pgrep -n -x xfce4-panel || true)
 [ -n "$panel_pid" ] || exit 0
@@ -14,29 +13,54 @@ DBUS_SESSION_BUS_ADDRESS=$(tr '\0' '\n' < "$session_env" |
 export DBUS_SESSION_BUS_ADDRESS
 
 config_dir="$HOME/.config/xfce4/panel"
-template=/usr/local/share/equuleus/battery-panel.rc
-
-while plugin=$(xfconf-query -c "$channel" -p "/plugins/plugin-$plugin_id" \
-    2>/dev/null); do
-    if [ "$plugin" = battery ]; then
-        install -d -m 0755 "$config_dir"
-        install -m 0644 "$template" "$config_dir/battery-$plugin_id.rc"
-        exit 0
-    fi
-    plugin_id=$((plugin_id + 1))
-done
+template=/usr/local/share/equuleus/battery-genmon.rc
 
 ids=$(xfconf-query -c "$channel" -p "$panel" |
     awk '/^[0-9]+$/ { print }')
 [ -n "$ids" ] || exit 0
 
-xfconf-query -c "$channel" -p "/plugins/plugin-$plugin_id" \
-    -n -t string -s battery
+plugin_id=9
+plugin=$(xfconf-query -c "$channel" -p "/plugins/plugin-$plugin_id" \
+    2>/dev/null || true)
+case "$plugin" in
+    ''|battery|genmon) ;;
+    *)
+        plugin_id=23
+        while xfconf-query -c "$channel" -p "/plugins/plugin-$plugin_id" \
+            >/dev/null 2>&1; do
+            plugin_id=$((plugin_id + 1))
+        done
+        ;;
+esac
+
 install -d -m 0755 "$config_dir"
-install -m 0644 "$template" "$config_dir/battery-$plugin_id.rc"
+install -m 0644 "$template" "$config_dir/genmon-$plugin_id.rc"
+
+if xfconf-query -c "$channel" -p "/plugins/plugin-$plugin_id" \
+    >/dev/null 2>&1; then
+    xfconf-query -c "$channel" -p "/plugins/plugin-$plugin_id" -s genmon
+else
+    xfconf-query -c "$channel" -p "/plugins/plugin-$plugin_id" -n \
+        -t string -s genmon
+fi
 
 set --
+plugin_present=0
 for id in $ids; do
+    plugin=$(xfconf-query -c "$channel" -p "/plugins/plugin-$id" \
+        2>/dev/null || true)
+    if [ "$id" != "$plugin_id" ]; then
+        case "$plugin" in
+            battery|genmon) continue ;;
+        esac
+    fi
+    if [ "$plugin_present" -eq 0 ] && [ "$plugin" = notification-plugin ]; then
+        set -- "$@" -t int -s "$plugin_id"
+        plugin_present=1
+    fi
     set -- "$@" -t int -s "$id"
+    [ "$id" != "$plugin_id" ] || plugin_present=1
 done
-xfconf-query -c "$channel" -p "$panel" -a "$@" -t int -s "$plugin_id"
+[ "$plugin_present" -eq 1 ] ||
+    set -- "$@" -t int -s "$plugin_id"
+xfconf-query -c "$channel" -p "$panel" -a "$@"

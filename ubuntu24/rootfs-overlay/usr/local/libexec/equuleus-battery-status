@@ -1,0 +1,54 @@
+#!/bin/sh
+set -eu
+
+supply=/sys/class/power_supply/bms
+
+if [ ! -r "$supply/capacity" ]; then
+    printf '%s\n' \
+        '<icon>battery-missing-symbolic</icon>' \
+        '<txt>--%</txt>' \
+        '<tool>Battery data unavailable</tool>'
+    exit 0
+fi
+
+capacity=$(cat "$supply/capacity")
+case "$capacity" in
+    ''|*[!0-9]*) capacity=0 ;;
+esac
+[ "$capacity" -le 100 ] || capacity=100
+
+status=Unknown
+[ ! -r "$supply/status" ] || status=$(cat "$supply/status")
+
+if [ "$capacity" -ge 90 ]; then
+    level=full
+elif [ "$capacity" -ge 40 ]; then
+    level=good
+elif [ "$capacity" -ge 15 ]; then
+    level=low
+else
+    level=caution
+fi
+
+case "$status" in
+    Charging)
+        icon="battery-$level-charging-symbolic"
+        state=Charging
+        ;;
+    Full)
+        icon=battery-full-charged-symbolic
+        state=Full
+        ;;
+    Discharging)
+        icon="battery-$level-symbolic"
+        state=Discharging
+        ;;
+    *)
+        icon="battery-$level-symbolic"
+        state="$status"
+        ;;
+esac
+
+printf '<icon>%s</icon>\n' "$icon"
+printf '<txt>%s%%</txt>\n' "$capacity"
+printf '<tool>Battery: %s%% (%s)</tool>\n' "$capacity" "$state"

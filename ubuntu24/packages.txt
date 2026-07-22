@@ -50,7 +50,7 @@ build-essential
 pkg-config
 xfce4
 xfce4-goodies
-xfce4-battery-plugin
+xfce4-genmon-plugin
 xfce4-screensaver
 xserver-xorg-core
 xserver-xorg-video-fbdev
