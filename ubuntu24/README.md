@@ -15,6 +15,8 @@ Linux-only installation after temporary-boot acceptance.
 - VNC scraping is installed but remains disabled until a VNC password is set.
 - Power and volume keys are described by the equuleus device tree; the PMI8998
   fuel gauge is exposed through Linux power-supply sysfs.
+- Xfce's top panel includes the native battery plugin, showing the `bms` charge
+  percentage, charging state and battery icon.
 
 ## Safety rules
 
