@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+session_pid=$(pgrep -n -x xfce4-session || true)
+[ -n "$session_pid" ] || exit 0
+
+session_env="/proc/$session_pid/environ"
+DBUS_SESSION_BUS_ADDRESS=$(tr '\0' '\n' < "$session_env" |
+    sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n 1)
+[ -n "$DBUS_SESSION_BUS_ADDRESS" ] || exit 0
+export DBUS_SESSION_BUS_ADDRESS
+
+path=/commands/custom/XF86PowerOff
+if xfconf-query -c xfce4-keyboard-shortcuts -p "$path" >/dev/null 2>&1; then
+    xfconf-query -c xfce4-keyboard-shortcuts -p "$path" -s xflock4
+else
+    xfconf-query -c xfce4-keyboard-shortcuts -p "$path" -n \
+        -t string -s xflock4
+fi

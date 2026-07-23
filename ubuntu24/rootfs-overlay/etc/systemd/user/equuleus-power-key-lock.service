@@ -1,0 +1,13 @@
+[Unit]
+Description=Bind the Equuleus power key to the Xfce lock screen
+After=equuleus-local-xfce.service
+Requires=equuleus-local-xfce.service
+
+[Service]
+Type=oneshot
+Environment=DISPLAY=:0
+ExecStart=/bin/sh /usr/local/libexec/equuleus-bind-power-key
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target

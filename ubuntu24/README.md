@@ -15,6 +15,8 @@ Linux-only installation after temporary-boot acceptance.
 - VNC scraping is installed but remains disabled until a VNC password is set.
 - Power and volume keys are described by the equuleus device tree; the PMI8998
   fuel gauge is exposed through Linux power-supply sysfs.
+- Xfce explicitly maps a short power-key press to `xflock4`, which invokes the
+  configured screen locker even when logind has no local graphical session.
 - Xfce's top panel reads `bms` directly and shows its charge percentage,
   charging state and battery icon.
 
