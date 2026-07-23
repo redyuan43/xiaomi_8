@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+
+media=/dev/media0
+video=/dev/video2
+width=4032
+height=3024
+frames=${1:-300}
+
+media-ctl -d "$media" -l "'msm_csiphy0':1 -> 'msm_csid0':0 [1]"
+media-ctl -d "$media" -l "'msm_csid0':1 -> 'msm_vfe0_rdi0':0 [1]"
+media-ctl -d "$media" -V "'msm_csiphy0':0 [fmt:SBGGR10_1X10/${width}x${height} field:none]"
+media-ctl -d "$media" -V "'msm_csiphy0':1 [fmt:SBGGR10_1X10/${width}x${height} field:none]"
+media-ctl -d "$media" -V "'msm_csid0':0 [fmt:SBGGR10_1X10/${width}x${height} field:none]"
+media-ctl -d "$media" -V "'msm_csid0':1 [fmt:SBGGR10_1X10/${width}x${height} field:none]"
+media-ctl -d "$media" -V "'msm_vfe0_rdi0':0 [fmt:SBGGR10_1X10/${width}x${height} field:none]"
+media-ctl -d "$media" -V "'msm_vfe0_rdi0':1 [fmt:SBGGR10_1X10/${width}x${height} field:none]"
+
+v4l2-ctl -d "$video" \
+	--set-fmt-video="width=${width},height=${height},pixelformat=pBAA" \
+	--stream-mmap=3 \
+	--stream-count="$frames" \
+	--stream-to=- |
+	/usr/local/libexec/equuleus-raw10-unpack "$width" "$height" |
+	ffplay -loglevel warning -f rawvideo -pixel_format bayer_bggr16le \
+		-video_size "${width}x${height}" -framerate 30 -window_title "Mi 8 Pro Rear Camera" -

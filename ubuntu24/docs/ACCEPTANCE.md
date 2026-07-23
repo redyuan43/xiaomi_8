@@ -30,6 +30,19 @@ Bluetooth is accepted only when `hci0` exists, scanning returns real devices,
 and one physical device pairs, connects and reconnects after restarting BlueZ.
 Module loading alone is not success.
 
+## Camera stage
+
+Camera acceptance requires all of the following:
+
+- `/dev/media*` exists and `media-ctl -p` shows the Qualcomm CAMSS graph.
+- The graph includes the expected sensor entity, starting with rear `imx363`.
+- A capture node reports a camera driver through `v4l2-ctl --all`.
+- A bounded capture produces real frames without CAMSS, CSID, CSIPHY, or VFE
+  errors in the kernel log.
+
+The existing `qcom-venus-decoder` and `qcom-venus-encoder` `/dev/video*`
+nodes are codec devices, not camera success criteria.
+
 ## Rollback
 
 Power-cycle or reboot to the bootloader and temporarily boot:

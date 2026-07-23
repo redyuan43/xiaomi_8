@@ -839,6 +839,34 @@ config VIDEO_IMX355
 	  To compile this driver as a module, choose M here: the
 	  module will be called imx355.
 
+config VIDEO_IMX363
+	tristate "Sony IMX363 sensor support"
+	depends on I2C && VIDEO_V4L2
+	select MEDIA_CONTROLLER
+	select VIDEO_V4L2_SUBDEV_API
+	select V4L2_FWNODE
+	select V4L2_CCI_I2C
+	help
+	  This is a Video4Linux2 sensor driver for the Sony
+	  IMX363 camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called imx363.
+
+config VIDEO_S5K3T1_PROBE
+	tristate "Samsung S5K3T1 sensor support"
+	depends on I2C && VIDEO_V4L2
+	select MEDIA_CONTROLLER
+	select VIDEO_V4L2_SUBDEV_API
+	select V4L2_FWNODE
+	select V4L2_CCI_I2C
+	help
+	  This is a Video4Linux2 driver for the Samsung S5K3T1
+	  front camera sensor used by Xiaomi Mi 8 Pro.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called s5k3t1.
+
 config VIDEO_OV02A10
 	tristate "OmniVision OV02A10 sensor support"
 	depends on VIDEO_V4L2 && I2C

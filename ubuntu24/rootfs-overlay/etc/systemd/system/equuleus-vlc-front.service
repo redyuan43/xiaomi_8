@@ -1,0 +1,13 @@
+[Unit]
+Description=Publish Mi 8 Pro front camera to VLC
+After=multi-user.target
+Conflicts=equuleus-vlc-rear.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/libexec/equuleus-vlc-camera front /dev/video16
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

@@ -24,6 +24,10 @@
 #define CAMSS_FRAME_MAX_HEIGHT_RDI	8191
 #define CAMSS_FRAME_MAX_HEIGHT_PIX	4096
 
+#define S5K3T1_RAW10_WIDTH		2592
+#define S5K3T1_RAW10_HEIGHT		1940
+#define S5K3T1_RAW10_STRIDE		3248
+
 struct fract {
 	u8 numerator;
 	u8 denominator;
@@ -46,6 +50,13 @@ struct camss_format_info {
 	struct fract vsub[3];
 	unsigned int bpp[3];
 };
+
+static bool video_is_s5k3t1_raw10(const struct v4l2_pix_format_mplane *pix)
+{
+	return pix->pixelformat == V4L2_PIX_FMT_SGRBG10P &&
+	       pix->width == S5K3T1_RAW10_WIDTH &&
+	       pix->height == S5K3T1_RAW10_HEIGHT;
+}
 
 static const struct camss_format_info formats_rdi_8x16[] = {
 	{ MEDIA_BUS_FMT_UYVY8_2X8, V4L2_PIX_FMT_UYVY, 1,
@@ -85,6 +96,55 @@ static const struct camss_format_info formats_rdi_8x16[] = {
 };
 
 static const struct camss_format_info formats_rdi_8x96[] = {
+	{ MEDIA_BUS_FMT_UYVY8_2X8, V4L2_PIX_FMT_UYVY, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 16 } },
+	{ MEDIA_BUS_FMT_VYUY8_2X8, V4L2_PIX_FMT_VYUY, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 16 } },
+	{ MEDIA_BUS_FMT_YUYV8_2X8, V4L2_PIX_FMT_YUYV, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 16 } },
+	{ MEDIA_BUS_FMT_YVYU8_2X8, V4L2_PIX_FMT_YVYU, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 16 } },
+	{ MEDIA_BUS_FMT_SBGGR8_1X8, V4L2_PIX_FMT_SBGGR8, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 8 } },
+	{ MEDIA_BUS_FMT_SGBRG8_1X8, V4L2_PIX_FMT_SGBRG8, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 8 } },
+	{ MEDIA_BUS_FMT_SGRBG8_1X8, V4L2_PIX_FMT_SGRBG8, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 8 } },
+	{ MEDIA_BUS_FMT_SRGGB8_1X8, V4L2_PIX_FMT_SRGGB8, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 8 } },
+	{ MEDIA_BUS_FMT_SBGGR10_1X10, V4L2_PIX_FMT_SBGGR10P, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 10 } },
+	{ MEDIA_BUS_FMT_SGBRG10_1X10, V4L2_PIX_FMT_SGBRG10P, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 10 } },
+	{ MEDIA_BUS_FMT_SGRBG10_1X10, V4L2_PIX_FMT_SGRBG10P, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 10 } },
+	{ MEDIA_BUS_FMT_SRGGB10_1X10, V4L2_PIX_FMT_SRGGB10P, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 10 } },
+	{ MEDIA_BUS_FMT_SBGGR10_2X8_PADHI_LE, V4L2_PIX_FMT_SBGGR10, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 16 } },
+	{ MEDIA_BUS_FMT_SBGGR12_1X12, V4L2_PIX_FMT_SBGGR12P, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 12 } },
+	{ MEDIA_BUS_FMT_SGBRG12_1X12, V4L2_PIX_FMT_SGBRG12P, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 12 } },
+	{ MEDIA_BUS_FMT_SGRBG12_1X12, V4L2_PIX_FMT_SGRBG12P, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 12 } },
+	{ MEDIA_BUS_FMT_SRGGB12_1X12, V4L2_PIX_FMT_SRGGB12P, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 12 } },
+	{ MEDIA_BUS_FMT_SBGGR14_1X14, V4L2_PIX_FMT_SBGGR14P, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 14 } },
+	{ MEDIA_BUS_FMT_SGBRG14_1X14, V4L2_PIX_FMT_SGBRG14P, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 14 } },
+	{ MEDIA_BUS_FMT_SGRBG14_1X14, V4L2_PIX_FMT_SGRBG14P, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 14 } },
+	{ MEDIA_BUS_FMT_SRGGB14_1X14, V4L2_PIX_FMT_SRGGB14P, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 14 } },
+	{ MEDIA_BUS_FMT_Y10_1X10, V4L2_PIX_FMT_Y10P, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 10 } },
+	{ MEDIA_BUS_FMT_Y10_2X8_PADHI_LE, V4L2_PIX_FMT_Y10, 1,
+	  { { 1, 1 } }, { { 1, 1 } }, { 16 } },
+};
+
+static const struct camss_format_info formats_rdi_845[] = {
 	{ MEDIA_BUS_FMT_UYVY8_2X8, V4L2_PIX_FMT_UYVY, 1,
 	  { { 1, 1 } }, { { 1, 1 } }, { 16 } },
 	{ MEDIA_BUS_FMT_VYUY8_2X8, V4L2_PIX_FMT_VYUY, 1,
@@ -330,6 +390,7 @@ static int video_queue_setup(struct vb2_queue *q,
 	struct camss_video *video = vb2_get_drv_priv(q);
 	const struct v4l2_pix_format_mplane *format =
 						&video->active_fmt.fmt.pix_mp;
+	bool s5k3t1_frame = video_is_s5k3t1_raw10(format);
 	unsigned int i;
 
 	if (*num_planes) {
@@ -346,7 +407,8 @@ static int video_queue_setup(struct vb2_queue *q,
 	*num_planes = format->num_planes;
 
 	for (i = 0; i < *num_planes; i++)
-		sizes[i] = format->plane_fmt[i].sizeimage;
+		sizes[i] = format->plane_fmt[i].sizeimage +
+			(s5k3t1_frame ? SZ_4M : 0);
 
 	return 0;
 }
@@ -368,6 +430,10 @@ static int video_buf_init(struct vb2_buffer *vb)
 			return -EFAULT;
 
 		buffer->addr[i] = sg_dma_address(sgt->sgl);
+		dev_info(video->camss->dev,
+			 "CAMSS buffer: iova=%pad first_len=%u nents=%u orig_nents=%u size=%u\n",
+			 &buffer->addr[i], sg_dma_len(sgt->sgl), sgt->nents,
+			 sgt->orig_nents, format->plane_fmt[i].sizeimage);
 	}
 
 	if (format->pixelformat == V4L2_PIX_FMT_NV12 ||
@@ -427,8 +493,16 @@ static int video_check_format(struct camss_video *video)
 	    pix->height != sd_pix->height ||
 	    pix->width != sd_pix->width ||
 	    pix->num_planes != sd_pix->num_planes ||
-	    pix->field != format.fmt.pix_mp.field)
+	    pix->field != format.fmt.pix_mp.field) {
+		dev_err(video->camss->dev,
+			"format mismatch: video %ux%u fourcc %4.4s planes %u field %u, subdev %ux%u fourcc %4.4s planes %u field %u\n",
+			pix->width, pix->height, (char *)&pix->pixelformat,
+			pix->num_planes, pix->field,
+			sd_pix->width, sd_pix->height,
+			(char *)&sd_pix->pixelformat, sd_pix->num_planes,
+			format.fmt.pix_mp.field);
 		return -EPIPE;
+	}
 
 	return 0;
 }
@@ -443,12 +517,20 @@ static int video_start_streaming(struct vb2_queue *q, unsigned int count)
 	int ret;
 
 	ret = media_pipeline_start(&vdev->entity, &video->pipe);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_err(video->camss->dev,
+			"media pipeline start for %s failed: %d\n",
+			video_device_node_name(vdev), ret);
 		return ret;
+	}
 
 	ret = video_check_format(video);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_err(video->camss->dev,
+			"format check for %s failed: %d\n",
+			video_device_node_name(vdev), ret);
 		goto error;
+	}
 
 	entity = &vdev->entity;
 	while (1) {
@@ -464,8 +546,12 @@ static int video_start_streaming(struct vb2_queue *q, unsigned int count)
 		subdev = media_entity_to_v4l2_subdev(entity);
 
 		ret = v4l2_subdev_call(subdev, video, s_stream, 1);
-		if (ret < 0 && ret != -ENOIOCTLCMD)
+		if (ret < 0 && ret != -ENOIOCTLCMD) {
+			dev_err(video->camss->dev,
+				"stream start for %s failed: %d\n",
+				entity->name, ret);
 			goto error;
+		}
 	}
 
 	return 0;
@@ -678,6 +764,12 @@ static int __video_try_fmt(struct camss_video *video, struct v4l2_format *f)
 		pix_mp->plane_fmt[i].bytesperline = bpl;
 		pix_mp->plane_fmt[i].sizeimage = pix_mp->height /
 			fi->vsub[i].numerator * fi->vsub[i].denominator * bpl;
+	}
+
+	if (video_is_s5k3t1_raw10(pix_mp)) {
+		pix_mp->plane_fmt[0].bytesperline = S5K3T1_RAW10_STRIDE;
+		pix_mp->plane_fmt[0].sizeimage =
+			S5K3T1_RAW10_HEIGHT * S5K3T1_RAW10_STRIDE;
 	}
 
 	pix_mp->field = V4L2_FIELD_NONE;
@@ -960,6 +1052,9 @@ int msm_video_register(struct camss_video *video, struct v4l2_device *v4l2_dev,
 			video->formats = formats_rdi_8x96;
 			video->nformats = ARRAY_SIZE(formats_rdi_8x96);
 		}
+	}  else if (video->camss->version == CAMSS_845) {
+		video->formats = formats_rdi_845;
+		video->nformats = ARRAY_SIZE(formats_rdi_845);
 	} else {
 		ret = -EINVAL;
 		goto error_video_register;

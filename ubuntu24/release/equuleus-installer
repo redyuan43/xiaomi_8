@@ -152,8 +152,15 @@ echo "--- services ---"
 systemctl is-active equuleus-xorg.service NetworkManager.service \
     equuleus-audio.service
 systemctl --user is-active equuleus-local-xfce.service
-echo "--- video ---"
-ls -l /dev/video* 2>/dev/null || true
+echo "--- media ---"
+ls -l /dev/media* /dev/video* 2>/dev/null || true
+command -v media-ctl >/dev/null 2>&1 && media-ctl -p || true
+for node in /dev/video*; do
+    [ -e "$node" ] || continue
+    echo "node=$node"
+    command -v v4l2-ctl >/dev/null 2>&1 &&
+        v4l2-ctl --device="$node" --all 2>/dev/null || true
+done
 command -v chromium-equuleus-v4l2 || true
 REMOTE
     grep -qx 'input_code=KEY_POWER' "$report" || fail "power key not present in acceptance report"
