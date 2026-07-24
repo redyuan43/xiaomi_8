@@ -178,6 +178,8 @@ struct fts_hw_platform_data {
 	unsigned long irq_flags;
 	unsigned int x_max;
 	unsigned int y_max;
+	unsigned int display_safe_y_start;
+	unsigned int display_safe_y_end;
 	const char *vdd_reg_name;
 	const char *avdd_reg_name;
 	const char *default_fw_name;
@@ -283,6 +285,7 @@ struct fts_ts_info {
 
 	unsigned int mode;
 	unsigned long touch_id;
+	unsigned long display_safe_suppressed_id;
 #ifdef STYLUS_MODE
 	unsigned long stylus_id;
 #endif

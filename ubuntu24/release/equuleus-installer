@@ -152,6 +152,12 @@ echo "--- services ---"
 systemctl is-active equuleus-xorg.service NetworkManager.service \
     equuleus-audio.service
 systemctl --user is-active equuleus-local-xfce.service
+echo "--- display ---"
+echo "display_geometry=$(DISPLAY=:0 xdpyinfo | awk '/dimensions:/ { print $2; exit }')"
+echo "xorg_profile=$(readlink -f /etc/equuleus/xorg-active.conf)"
+test -f /usr/lib/xorg/modules/drivers/equuleusfbdev_drv.so
+echo "xorg_module=equuleusfbdev"
+systemctl --user is-active equuleus-display-safe-area.service || true
 echo "--- media ---"
 ls -l /dev/media* /dev/video* 2>/dev/null || true
 command -v media-ctl >/dev/null 2>&1 && media-ctl -p || true
@@ -167,6 +173,11 @@ REMOTE
     grep -qx 'input_code=KEY_VOLUMEUP' "$report" || fail "volume-up key not present in acceptance report"
     grep -qx 'input_code=KEY_VOLUMEDOWN' "$report" || fail "volume-down key not present in acceptance report"
     grep -q '^capacity=' "$report" || fail "battery capacity not present in acceptance report"
+    grep -qx 'display_geometry=2072x1080' "$report" || fail "display safe geometry is not active"
+    grep -qx 'xorg_profile=/etc/X11/equuleus-fbdev-safe.conf' "$report" ||
+        fail "display safe Xorg profile is not active"
+    grep -qx 'xorg_module=equuleusfbdev' "$report" ||
+        fail "equuleus fbdev module is not present"
     printf 'automated_checks=passed\n' >> "$report"
     sha256sum "$report" > "$report.sha256"
     printf 'Acceptance report created: %s\n' "$report"

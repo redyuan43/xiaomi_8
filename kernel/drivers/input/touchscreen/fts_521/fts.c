@@ -206,6 +206,7 @@ void release_all_touches(struct fts_ts_info *info)
 	input_sync(info->input_dev);
 	lpm_disable_for_input(false);
 	info->touch_id = 0;
+	info->display_safe_suppressed_id = 0;
 #ifdef STYLUS_MODE
 	info->stylus_id = 0;
 #endif
@@ -2678,6 +2679,30 @@ static void fts_enter_pointer_event_handler(struct fts_ts_info *info,
 	x = (((int)event[3] & 0x0F) << 8) | (event[2]);
 	y = ((int)event[4] << 4) | ((event[3] & 0xF0) >> 4);
 
+	if (y < info->board->display_safe_y_start ||
+	    y >= info->board->display_safe_y_end) {
+		input_mt_slot(info->input_dev, touchId);
+		if (test_bit(touchId, &info->touch_id)) {
+			input_mt_report_slot_state(info->input_dev,
+						   MT_TOOL_FINGER, 0);
+			input_report_abs(info->input_dev,
+					 ABS_MT_TRACKING_ID, -1);
+			__clear_bit(touchId, &info->touch_id);
+			if (!info->touch_id) {
+				input_report_key(info->input_dev, BTN_TOUCH, 0);
+				input_report_key(info->input_dev,
+						 BTN_TOOL_FINGER, 0);
+			}
+		}
+#ifdef STYLUS_MODE
+		__clear_bit(touchId, &info->stylus_id);
+#endif
+		__set_bit(touchId, &info->display_safe_suppressed_id);
+		input_sync(info->input_dev);
+		return;
+	}
+	__clear_bit(touchId, &info->display_safe_suppressed_id);
+
 	z = 1;
 	distance = 0;
 
@@ -2778,6 +2803,7 @@ static void fts_leave_pointer_event_handler(struct fts_ts_info *info,
 
 	touchType = event[1] & 0x0F;
 	touchId = (event[1] & 0xF0) >> 4;
+	__clear_bit(touchId, &info->display_safe_suppressed_id);
 #ifdef CONFIG_INPUT_PRESS_NDT
 	x = (event[2] << 4) | (event[4] & 0xF0) >> 4;
 	y = (event[3] << 4) | (event[4] & 0x0F);
@@ -4428,6 +4454,24 @@ static int parse_dt(struct device *dev, struct fts_hw_platform_data *bdata)
 		bdata->y_max = Y_AXIS_MAX;
 	else
 		bdata->y_max = temp_val;
+
+	bdata->display_safe_y_start = 0;
+	bdata->display_safe_y_end = bdata->y_max;
+	of_property_read_u32(np, "fts,display-safe-y-start",
+			     &bdata->display_safe_y_start);
+	of_property_read_u32(np, "fts,display-safe-y-end",
+			     &bdata->display_safe_y_end);
+	if (bdata->display_safe_y_start >= bdata->display_safe_y_end ||
+	    bdata->display_safe_y_end > bdata->y_max) {
+		dev_warn(dev,
+			 "invalid display safe Y range %u..%u, using full range\n",
+			 bdata->display_safe_y_start,
+			 bdata->display_safe_y_end);
+		bdata->display_safe_y_start = 0;
+		bdata->display_safe_y_end = bdata->y_max;
+	}
+	dev_info(dev, "display safe Y range %u..%u\n",
+		 bdata->display_safe_y_start, bdata->display_safe_y_end);
 	retval = of_property_read_string(np, "fts,default-fw-name",
 					 &bdata->default_fw_name);
 
@@ -5318,6 +5362,7 @@ static int fts_probe(struct spi_device *client)
 	skip_5_1 = 1;
 	/* track slots */
 	info->touch_id = 0;
+	info->display_safe_suppressed_id = 0;
 #ifdef STYLUS_MODE
 	info->stylus_id = 0;
 #endif

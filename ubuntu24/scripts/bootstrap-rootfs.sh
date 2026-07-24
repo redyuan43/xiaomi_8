@@ -12,6 +12,8 @@ BASE="$INPUT_DIR/ubuntu-base-24.04.4-base-arm64.tar.gz"
 OVERLAY="$INPUT_DIR/equuleus-ubuntu24-overlay.tar.gz"
 PACKAGES="$INPUT_DIR/packages.txt"
 PD_SOURCE="$INPUT_DIR/pd-mapper-1.1.tar.gz"
+FBDEV_SOURCE="$INPUT_DIR/xf86-video-fbdev-0.5.0.tar.gz"
+FBDEV_PATCH="$INPUT_DIR/xf86-video-fbdev-equuleus-safe-insets.patch"
 
 fail() {
     printf 'ERROR: %s\n' "$*" >&2
@@ -27,7 +29,8 @@ fi
 [ ! -e "$TARGET" ] || fail "$TARGET already exists"
 [ -d "$MODULES_SOURCE" ] || fail "missing modules source $MODULES_SOURCE"
 [ -d "$FIRMWARE_SOURCE" ] || fail "missing firmware source $FIRMWARE_SOURCE"
-for file in "$BASE" "$OVERLAY" "$PACKAGES" "$PD_SOURCE" "$INPUT_DIR/SHA256SUMS"; do
+for file in "$BASE" "$OVERLAY" "$PACKAGES" "$PD_SOURCE" "$FBDEV_SOURCE" \
+    "$FBDEV_PATCH" "$INPUT_DIR/SHA256SUMS"; do
     [ -f "$file" ] || fail "missing $file"
 done
 (cd "$INPUT_DIR" && sha256sum -c SHA256SUMS)
@@ -90,8 +93,28 @@ chown -R root:root \
     "$STAGE/etc/sysctl.d" \
     "$STAGE/usr/local/bin" \
     "$STAGE/usr/local/libexec" \
+    "$STAGE/usr/local/src" \
     "$STAGE/usr/local/share"
+chroot "$STAGE" cc -O2 -Wall -Wextra \
+    /usr/local/src/equuleus-display-safe-area.c \
+    -o /usr/local/libexec/equuleus-display-safe-area -lX11
+chroot "$STAGE" strip /usr/local/libexec/equuleus-display-safe-area
+rm -f "$STAGE/usr/local/src/equuleus-display-safe-area.c"
 mkdir -p "$STAGE/usr/local/src"
+mkdir -p "$STAGE/usr/local/src/xf86-video-equuleus-fbdev"
+tar -xzf "$FBDEV_SOURCE" \
+    -C "$STAGE/usr/local/src/xf86-video-equuleus-fbdev" \
+    --strip-components=1
+patch -d "$STAGE/usr/local/src/xf86-video-equuleus-fbdev" \
+    -p1 < "$FBDEV_PATCH"
+chroot "$STAGE" sh -c '
+    cd /usr/local/src/xf86-video-equuleus-fbdev
+    ./autogen.sh --prefix=/usr --with-xorg-module-dir=/usr/lib/xorg/modules
+    make -C src -j"$(nproc)"
+    make -C src install
+    rm -f /usr/lib/xorg/modules/drivers/equuleusfbdev_drv.la
+'
+rm -rf "$STAGE/usr/local/src/xf86-video-equuleus-fbdev"
 tar -xpf "$PD_SOURCE" -C "$STAGE/usr/local/src"
 chroot "$STAGE" make -C /usr/local/src/pd-mapper-1.1 clean
 chroot "$STAGE" make -C /usr/local/src/pd-mapper-1.1
@@ -160,6 +183,12 @@ chroot "$STAGE" systemctl mask display-manager.service lightdm.service 2>/dev/nu
 chroot "$STAGE" systemctl enable NetworkManager.service ssh.service systemd-timesyncd.service
 chroot "$STAGE" systemctl enable tqftpserv.service rmtfs.service equuleus-mss.service pd-mapper.service equuleus-wifi.service equuleus-adsp.service equuleus-audio.service
 chroot "$STAGE" systemctl enable equuleus-xorg.service equuleus-vnc-firewall.service
+if [ -e "$STAGE/etc/X11/xorg.conf.d/20-equuleus-fbdev.conf" ]; then
+    mv "$STAGE/etc/X11/xorg.conf.d/20-equuleus-fbdev.conf" \
+        "$STAGE/etc/X11/xorg.conf.d/20-equuleus-fbdev.conf.disabled"
+fi
+ln -sfn /etc/X11/equuleus-fbdev-safe.conf \
+    "$STAGE/etc/equuleus/xorg-active.conf"
 mkdir -p "$STAGE/var/lib/systemd/linger"
 touch "$STAGE/var/lib/systemd/linger/ivan"
 mkdir -p "$STAGE/home/ivan/.vnc" "$STAGE/home/ivan/.config/systemd/user/default.target.wants"
@@ -168,6 +197,8 @@ ln -sfn /etc/systemd/user/equuleus-local-xfce.service \
     "$STAGE/home/ivan/.config/systemd/user/default.target.wants/equuleus-local-xfce.service"
 ln -sfn /etc/systemd/user/equuleus-battery-panel.service \
     "$STAGE/home/ivan/.config/systemd/user/default.target.wants/equuleus-battery-panel.service"
+ln -sfn /etc/systemd/user/equuleus-display-safe-area.service \
+    "$STAGE/home/ivan/.config/systemd/user/default.target.wants/equuleus-display-safe-area.service"
 chown -R 1000:1000 "$STAGE/home/ivan/.vnc" "$STAGE/home/ivan/.config"
 
 rm -f "$STAGE/usr/sbin/policy-rc.d"
