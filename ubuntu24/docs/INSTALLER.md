@@ -24,6 +24,8 @@ Flatpak and its hardware-decoding launcher.
 The resulting filesystem contains:
 
 - physical framebuffer Xorg and Xfce on display `:0`;
+- a `2072x1080` safe X desktop centered between 96-pixel and 80-pixel
+  physical black insets;
 - NetworkManager, Blueman, PipeWire and WirePlumber;
 - the validated audio services and Qualcomm firmware staging;
 - power/volume input support and the PMI8998 battery module;
@@ -110,6 +112,7 @@ Automated acceptance requires:
 - `KEY_POWER`, `KEY_VOLUMEUP` and `KEY_VOLUMEDOWN` input capabilities;
 - battery capacity exported under `/sys/class/power_supply`;
 - physical Xorg, local Xfce, NetworkManager and audio services active;
+- the `equuleusfbdev` module and `2072x1080` safe display profile active;
 - video device nodes and the equuleus Chromium launcher present.
 
 Manual acceptance must additionally verify:
@@ -118,5 +121,8 @@ Manual acceptance must additionally verify:
 - short power press locks the Xfce session and does not power off;
 - charging state and battery percentage change plausibly;
 - touchscreen, keyboard and mouse remain responsive during video playback;
+- touches in the physical rounded-edge dead zones do not activate logical
+  desktop edge controls;
+- normal and fullscreen windows remain inside the visible safe rectangle;
 - Wi-Fi, Bluetooth, speaker and microphone still work;
 - YouTube H.264 playback uses the Qualcomm Venus hardware decoder.

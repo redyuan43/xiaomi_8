@@ -870,6 +870,8 @@
 		fts,irq-flags = <0x2008>;
 		fts,x-max = <1080>;
 		fts,y-max = <2248>;
+		fts,display-safe-y-start = <96>;
+		fts,display-safe-y-end = <2168>;
 		fts,config-array-size = <1>;
 		fts,default-fw-name = "st_fts_e8.ftb";
 

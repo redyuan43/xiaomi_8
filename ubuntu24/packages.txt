@@ -49,6 +49,11 @@ libqrtr-dev
 liblzma-dev
 build-essential
 pkg-config
+autoconf
+automake
+libtool
+xutils-dev
+xserver-xorg-dev
 xfce4
 xfce4-goodies
 xfce4-genmon-plugin
@@ -56,6 +61,7 @@ xfce4-screensaver
 xserver-xorg-core
 xserver-xorg-video-fbdev
 xserver-xorg-input-libinput
+libx11-dev
 xfce4-pulseaudio-plugin
 tigervnc-standalone-server
 tigervnc-scraping-server

@@ -1,0 +1,15 @@
+[Unit]
+Description=Reserve the equuleus display safe area
+After=equuleus-local-xfce.service
+Requires=equuleus-local-xfce.service
+
+[Service]
+Environment=DISPLAY=:0
+EnvironmentFile=/etc/equuleus/display-safe-area.conf
+ExecStartPre=/usr/local/libexec/equuleus-wait-x-display
+ExecStart=/usr/local/libexec/equuleus-display-safe-area --left ${SAFE_LEFT} --right ${SAFE_RIGHT} --top ${SAFE_TOP} --bottom ${SAFE_BOTTOM} --physical-width ${SAFE_PHYSICAL_WIDTH} --physical-height ${SAFE_PHYSICAL_HEIGHT}
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

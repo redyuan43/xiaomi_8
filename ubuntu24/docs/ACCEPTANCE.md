@@ -24,6 +24,39 @@ the reviewed `equuleus-installer commit` gate after acceptance.
 - Power, volume-up and volume-down are visible as Linux input capabilities.
 - Battery capacity and charging state are visible in `/sys/class/power_supply`.
 
+## Display safe area
+
+The native framebuffer remains `1080x2248`. The final clockwise-rotated Xorg
+desktop must report `2072x1080`, with a 96-pixel physical black inset on the
+left and an 80-pixel inset on the right:
+
+```sh
+cat /sys/class/graphics/fb0/virtual_size
+DISPLAY=:0 xdpyinfo | awk '/dimensions:/ { print $2 }'
+readlink -f /etc/equuleus/xorg-active.conf
+grep -E 'EQUULEUSFBDEV|safe insets' /var/log/Xorg.0.log
+```
+
+Expected results are:
+
+```text
+1080,2248
+2072x1080
+/etc/X11/equuleus-fbdev-safe.conf
+```
+
+Before enabling the custom driver, the stage-one Dock service may be tested
+with the stock `2248x1080` desktop. In that mode `_NET_WORKAREA` must begin at
+X=96 and have width 2072, but fullscreen applications are not yet accepted:
+
+```sh
+DISPLAY=:0 xprop -root _NET_WORKAREA
+```
+
+Touch acceptance requires taps and drags at the four safe-area corners and
+center to track correctly. Touches entirely inside physical Y ranges `0..95`
+and `2168..2247` must not activate controls at the logical desktop edges.
+
 ## Bluetooth stage
 
 Bluetooth is accepted only when `hci0` exists, scanning returns real devices,
@@ -44,6 +77,22 @@ The existing `qcom-venus-decoder` and `qcom-venus-encoder` `/dev/video*`
 nodes are codec devices, not camera success criteria.
 
 ## Rollback
+
+To roll only the physical display back to the stock Xorg driver over USB SSH:
+
+```sh
+sudo equuleus-display-safe-area-rollback
+```
+
+To enable the final safe-area driver again:
+
+```sh
+sudo equuleus-display-safe-area-enable
+```
+
+The stock profile restores a `2248x1080` X desktop. The FTS dead zones remain
+inactive for input events at the physical rounded edges, while the remaining
+touch area keeps its original coordinates.
 
 Power-cycle or reboot to the bootloader and temporarily boot:
 

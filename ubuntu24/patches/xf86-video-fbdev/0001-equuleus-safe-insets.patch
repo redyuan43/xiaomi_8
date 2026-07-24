@@ -1,0 +1,182 @@
+From: Equuleus Ubuntu maintainers
+Subject: [PATCH] fbdev: add equuleus rotated display safe insets
+
+Keep the stock fbdev module available and build this source as a separate
+equuleusfbdev module. For the Xiaomi Mi 8 Pro clockwise-rotated simplefb,
+reserve logical left and right insets while writing the shadow framebuffer
+into the corresponding centered physical scanlines.
+
+--- a/configure.ac
++++ b/configure.ac
+@@ -22,7 +22,7 @@
+ 
+ # Initialize Autoconf
+ AC_PREREQ([2.60])
+-AC_INIT([xf86-video-fbdev],
++AC_INIT([xf86-video-equuleus-fbdev],
+         [0.5.0],
+         [https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],
+         [xf86-video-fbdev])
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -24,10 +24,10 @@
+ # _ladir passes a dummy rpath to libtool so the thing will actually link
+ # TODO: -nostdlib/-Bstatic/-lgcc platform magic, not installing the .a, etc.
+ AM_CFLAGS = @XORG_CFLAGS@
+-fbdev_drv_la_LTLIBRARIES = fbdev_drv.la
+-fbdev_drv_la_LDFLAGS = -module -avoid-version
+-fbdev_drv_ladir = @moduledir@/drivers
++equuleusfbdev_drv_la_LTLIBRARIES = equuleusfbdev_drv.la
++equuleusfbdev_drv_la_LDFLAGS = -module -avoid-version
++equuleusfbdev_drv_ladir = @moduledir@/drivers
+ 
+-fbdev_drv_la_SOURCES = \
++equuleusfbdev_drv_la_SOURCES = \
+          compat-api.h \
+          fbdev.c
+--- a/src/fbdev.c
++++ b/src/fbdev.c
+@@ -81,8 +81,8 @@
+ /* -------------------------------------------------------------------- */
+ 
+ #define FBDEV_VERSION		4000
+-#define FBDEV_NAME		"FBDEV"
+-#define FBDEV_DRIVER_NAME	"fbdev"
++#define FBDEV_NAME		"EQUULEUSFBDEV"
++#define FBDEV_DRIVER_NAME	"equuleusfbdev"
+ 
+ #ifdef XSERVER_LIBPCIACCESS
+ static const struct pci_id_match fbdev_device_match[] = {
+@@ -125,6 +125,8 @@
+ 	OPTION_SHADOW_FB,
+ 	OPTION_ROTATE,
+ 	OPTION_FBDEV,
++	OPTION_SAFE_INSET_LEFT,
++	OPTION_SAFE_INSET_RIGHT,
+ 	OPTION_DEBUG
+ } FBDevOpts;
+ 
+@@ -132,6 +134,8 @@
+ 	{ OPTION_SHADOW_FB,	"ShadowFB",	OPTV_BOOLEAN,	{0},	FALSE },
+ 	{ OPTION_ROTATE,	"Rotate",	OPTV_STRING,	{0},	FALSE },
+ 	{ OPTION_FBDEV,		"fbdev",	OPTV_STRING,	{0},	FALSE },
++	{ OPTION_SAFE_INSET_LEFT, "SafeInsetLeft", OPTV_INTEGER, {0}, FALSE },
++	{ OPTION_SAFE_INSET_RIGHT, "SafeInsetRight", OPTV_INTEGER, {0}, FALSE },
+ 	{ OPTION_DEBUG,		"debug",	OPTV_BOOLEAN,	{0},	FALSE },
+ 	{ -1,			NULL,		OPTV_NONE,	{0},	FALSE }
+ };
+@@ -144,7 +148,7 @@
+ 
+ static XF86ModuleVersionInfo FBDevVersRec =
+ {
+-	"fbdev",
++	"equuleusfbdev",
+ 	MODULEVENDORSTRING,
+ 	MODINFOSTRING1,
+ 	MODINFOSTRING2,
+@@ -156,7 +160,9 @@
+ 	{0,0,0,0}
+ };
+ 
+-_X_EXPORT XF86ModuleData fbdevModuleData = { &FBDevVersRec, FBDevSetup, NULL };
++_X_EXPORT XF86ModuleData equuleusfbdevModuleData = {
++	&FBDevVersRec, FBDevSetup, NULL
++};
+ 
+ pointer
+ FBDevSetup(pointer module, pointer opts, int *errmaj, int *errmin)
+@@ -184,6 +190,8 @@
+ 	int				fboff;
+ 	int				lineLength;
+ 	int				rotate;
++	int				safeInsetLeft;
++	int				safeInsetRight;
+ 	Bool				shadowFB;
+         Bool                            shadow24;
+ 	void				*shadow;
+@@ -247,7 +255,14 @@
+ static Bool
+ fbdevEnterVT(ScrnInfoPtr pScrn)
+ {
+-    return fbdevHWEnterVT(pScrn);
++    FBDevPtr fPtr = FBDEVPTR(pScrn);
++
++    if (!fbdevHWEnterVT(pScrn))
++	return FALSE;
++
++    if (fPtr->fbmem)
++	memset(fPtr->fbmem + fPtr->fboff, 0, pScrn->videoRam);
++    return TRUE;
+ }
+ 
+ static void
+@@ -530,7 +545,7 @@
+ 
+ 	pScrn->progClock = TRUE;
+ 	pScrn->rgbBits   = 8;
+-	pScrn->chipset   = "fbdev";
++	pScrn->chipset   = "equuleusfbdev";
+ 	pScrn->videoRam  = fbdevHWGetVidmem(pScrn);
+ 
+ 	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "hardware: %s (video memory:"
+@@ -552,6 +567,17 @@
+         }
+ 
+ 	debug = xf86ReturnOptValBool(fPtr->Options, OPTION_DEBUG, FALSE);
++	fPtr->safeInsetLeft = 0;
++	fPtr->safeInsetRight = 0;
++	xf86GetOptValInteger(fPtr->Options, OPTION_SAFE_INSET_LEFT,
++			    &fPtr->safeInsetLeft);
++	xf86GetOptValInteger(fPtr->Options, OPTION_SAFE_INSET_RIGHT,
++			    &fPtr->safeInsetRight);
++	if (fPtr->safeInsetLeft < 0 || fPtr->safeInsetRight < 0) {
++	    xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
++		       "safe display insets must be non-negative\n");
++	    return FALSE;
++	}
+ 
+ 	/* rotation */
+ 	fPtr->rotate = FBDEV_ROTATE_NONE;
+@@ -587,6 +613,12 @@
+ 		       "valid options are \"CW\", \"CCW\" and \"UD\"\n");
+ 	  }
+ 	}
++	if ((fPtr->safeInsetLeft || fPtr->safeInsetRight) &&
++	    fPtr->rotate != FBDEV_ROTATE_CW) {
++	    xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
++		       "safe display insets currently require Rotate \"CW\"\n");
++	    return FALSE;
++	}
+ 
+ 	/* select video modes */
+ 
+@@ -801,6 +833,18 @@
+ 	}
+ 	fbdevHWSaveScreen(pScreen, SCREEN_SAVER_ON);
+ 	fbdevHWAdjustFrame(ADJUST_FRAME_ARGS(pScrn, 0, 0));
++	fPtr->lineLength = fbdevHWGetLineLength(pScrn);
++	if (fPtr->safeInsetLeft + fPtr->safeInsetRight >= pScrn->virtualY) {
++		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
++			   "safe display insets consume the framebuffer height\n");
++		return FALSE;
++	}
++	if (fPtr->safeInsetLeft || fPtr->safeInsetRight) {
++		xf86DrvMsg(pScrn->scrnIndex, X_CONFIG,
++			   "reserving logical left/right safe insets: %d/%d pixels\n",
++			   fPtr->safeInsetLeft, fPtr->safeInsetRight);
++		pScrn->virtualY -= fPtr->safeInsetLeft + fPtr->safeInsetRight;
++	}
+ 
+ 	/* mi layer */
+ 	miClearVisualTypes();
+@@ -849,7 +893,9 @@
+ 		pScrn->PointerMoved = FBDevPointerMoved;
+ 	}
+ 
+-	fPtr->fbstart = fPtr->fbmem + fPtr->fboff;
++	memset(fPtr->fbmem + fPtr->fboff, 0, pScrn->videoRam);
++	fPtr->fbstart = fPtr->fbmem + fPtr->fboff +
++		       fPtr->safeInsetLeft * fPtr->lineLength;
+ 
+ 	if (fPtr->shadowFB) {
+ 	    fPtr->shadow = calloc(1, pScrn->displayWidth * pScrn->virtualY *

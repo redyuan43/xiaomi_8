@@ -4,7 +4,7 @@ After=systemd-user-sessions.service
 Conflicts=getty@tty1.service
 
 [Service]
-ExecStart=/usr/lib/xorg/Xorg :0 vt1 -config /etc/X11/xorg.conf.d/20-equuleus-fbdev.conf -nolisten tcp -noreset -ac -logfile /var/log/Xorg.0.log
+ExecStart=/usr/lib/xorg/Xorg :0 vt1 -config /etc/equuleus/xorg-active.conf -nolisten tcp -noreset -ac -logfile /var/log/Xorg.0.log
 Restart=on-failure
 RestartSec=2
 

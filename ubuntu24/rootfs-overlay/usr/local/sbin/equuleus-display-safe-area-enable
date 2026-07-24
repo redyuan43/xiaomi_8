@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+[ "$(id -u)" -eq 0 ] || {
+    echo "run as root" >&2
+    exit 1
+}
+
+ln -sfn /etc/X11/equuleus-fbdev-safe.conf /etc/equuleus/xorg-active.conf
+systemctl restart equuleus-xorg.service
