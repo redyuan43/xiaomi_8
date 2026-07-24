@@ -39,6 +39,7 @@ pipewire-audio
 wireplumber
 libspa-0.2-bluetooth
 ffmpeg
+v4l-utils
 file
 rmtfs
 tqftpserv

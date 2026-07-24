@@ -84,6 +84,34 @@
 		};
 	};
 
+	cam_rear_vdig: regulator-cam-rear-vdig {
+		compatible = "regulator-fixed";
+		regulator-name = "cam_rear_vdig";
+		regulator-min-microvolt = <1350000>;
+		regulator-max-microvolt = <1350000>;
+		enable-active-high;
+		gpio = <&tlmm 99 GPIO_ACTIVE_HIGH>;
+	};
+
+	cam_front_vana: regulator-cam-front-vana {
+		compatible = "regulator-fixed";
+		regulator-name = "cam_front_vana";
+		regulator-min-microvolt = <3312000>;
+		regulator-max-microvolt = <3312000>;
+		enable-active-high;
+		gpio = <&tlmm 29 GPIO_ACTIVE_HIGH>;
+		vin-supply = <&vreg_bob>;
+	};
+
+	cam_front_vif: regulator-cam-front-vif {
+		compatible = "regulator-fixed";
+		regulator-name = "cam_front_vif";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		enable-active-high;
+		gpio = <&tlmm 75 GPIO_ACTIVE_HIGH>;
+	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 		pinctrl-names = "default";
@@ -215,6 +243,20 @@
 		input-enable;
 		bias-pull-up;
 		qcom,drive-strength = <PMIC_GPIO_STRENGTH_NO>;
+	};
+
+	cam_rear_pmic_enable: cam-rear-pmic-enable {
+		pins = "gpio11";
+		function = "normal";
+		output-high;
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_HIGH>;
+	};
+
+	cam_front_pmic_enable: cam-front-pmic-enable {
+		pins = "gpio9";
+		function = "normal";
+		output-high;
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_HIGH>;
 	};
 };
 
@@ -835,6 +877,125 @@
 			fts,tp-vendor = <0x48>;
 			fts,fw-name = "st_fts_e8.ftb";
 			fts,limit-name = "stm_fts_production_limits.csv";
+		};
+	};
+};
+
+&tlmm {
+	cam_mclk0_default: cam-mclk0-default {
+		pins = "gpio13";
+		function = "cam_mclk";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	cam_mclk2_default: cam-mclk2-default {
+		pins = "gpio15";
+		function = "cam_mclk";
+		drive-strength = <4>;
+		bias-disable;
+	};
+
+	cam_front_enable_default: cam-front-enable-default {
+		pins = "gpio80";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+		output-high;
+	};
+
+	cam_rear_enable_default: cam-rear-enable-default {
+		pins = "gpio11", "gpio12", "gpio40", "gpio75", "gpio102",
+		       "gpio119";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+		output-high;
+	};
+};
+
+&camss {
+	status = "okay";
+};
+
+&cci {
+	status = "okay";
+};
+
+&camss_port0 {
+	camss_rear_endpoint: endpoint {
+		clock-lanes = <7>;
+		data-lanes = <0 1 2 3>;
+		remote-endpoint = <&imx363_rear_endpoint>;
+	};
+};
+
+&camss_port2 {
+	camss_front_endpoint: endpoint {
+		clock-lanes = <7>;
+		data-lanes = <0 1 2 3>;
+		remote-endpoint = <&s5k3t1_front_endpoint>;
+	};
+};
+
+&cci_i2c0 {
+	imx363_rear: camera@1a {
+		compatible = "sony,imx363";
+		reg = <0x1a>;
+
+		clocks = <&clock_camcc CAM_CC_MCLK0_CLK>;
+		clock-names = "xvclk";
+		clock-frequency = <24000000>;
+		assigned-clocks = <&clock_camcc CAM_CC_MCLK0_CLK>;
+		assigned-clock-rates = <24000000>;
+
+		reset-gpios = <&tlmm 80 GPIO_ACTIVE_LOW>;
+		vana-supply = <&vreg_l22a_2p85>;
+		vdig-supply = <&cam_rear_vdig>;
+		vif-supply = <&vreg_s4a_1p8>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_mclk0_default &cam_rear_enable_default
+			     &cam_rear_pmic_enable>;
+		rotation = <90>;
+		orientation = <1>;
+
+		port {
+			imx363_rear_endpoint: endpoint {
+				data-lanes = <0 1 2 3>;
+				link-frequencies = /bits/ 64 <321000000 636000000>;
+				remote-endpoint = <&camss_rear_endpoint>;
+			};
+		};
+	};
+};
+
+&cci_i2c1 {
+	s5k3t1_front: camera@2d {
+		compatible = "samsung,s5k3t1";
+		reg = <0x2d>;
+
+		clocks = <&clock_camcc CAM_CC_MCLK2_CLK>;
+		clock-names = "xvclk";
+		clock-frequency = <24000000>;
+		assigned-clocks = <&clock_camcc CAM_CC_MCLK2_CLK>;
+		assigned-clock-rates = <24000000>;
+
+		reset-gpios = <&tlmm 104 GPIO_ACTIVE_LOW>;
+		vana-supply = <&cam_front_vana>;
+		vdig-supply = <&cam_rear_vdig>;
+		vif-supply = <&cam_front_vif>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_mclk2_default &cam_front_enable_default
+			     &cam_front_pmic_enable>;
+
+		port {
+			s5k3t1_front_endpoint: endpoint {
+				data-lanes = <0 1 2 3>;
+				link-frequencies = /bits/ 64 <267000000>;
+				remote-endpoint = <&camss_front_endpoint>;
+			};
 		};
 	};
 };

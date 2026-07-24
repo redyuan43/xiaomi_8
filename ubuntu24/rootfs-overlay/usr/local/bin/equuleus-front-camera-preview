@@ -1,0 +1,57 @@
+#!/bin/sh
+set -eu
+
+media=/dev/media0
+video=/dev/video2
+width=2592
+height=1940
+packed_stride=3240
+stride=3248
+frames=${1:-300}
+
+media-ctl -d "$media" -r
+media-ctl -d "$media" -l "'msm_csiphy2':1 -> 'msm_csid0':0 [1]"
+media-ctl -d "$media" -l "'msm_csid0':1 -> 'msm_vfe0_rdi0':0 [1]"
+media-ctl -d "$media" -V "'msm_csiphy2':0 [fmt:SGRBG10_1X10/${width}x${height} field:none]"
+media-ctl -d "$media" -V "'msm_csiphy2':1 [fmt:SGRBG10_1X10/${width}x${height} field:none]"
+media-ctl -d "$media" -V "'msm_csid0':0 [fmt:SGRBG10_1X10/${width}x${height} field:none]"
+media-ctl -d "$media" -V "'msm_csid0':1 [fmt:SGRBG10_1X10/${width}x${height} field:none]"
+media-ctl -d "$media" -V "'msm_vfe0_rdi0':0 [fmt:SGRBG10_1X10/${width}x${height} field:none]"
+media-ctl -d "$media" -V "'msm_vfe0_rdi0':1 [fmt:SGRBG10_1X10/${width}x${height} field:none]"
+
+v4l2-ctl -d "$video" \
+	--set-fmt-video="width=${width},height=${height},pixelformat=pgAA" \
+	--stream-mmap=3 \
+	--stream-count="$frames" \
+	--stream-to=- |
+	HEIGHT="$height" STRIDE="$stride" PACKED_STRIDE="$packed_stride" perl -e '
+		use strict;
+		use warnings;
+
+		binmode STDIN;
+		binmode STDOUT;
+
+		my $height = $ENV{HEIGHT};
+		my $stride = $ENV{STRIDE};
+		my $packed_stride = $ENV{PACKED_STRIDE};
+		my $frame_size = $height * $stride;
+
+		while (1) {
+			my $frame = q{};
+
+			while (length($frame) < $frame_size) {
+				my $read = read(STDIN, my $chunk,
+						$frame_size - length($frame));
+				exit 0 unless $read;
+				$frame .= $chunk;
+			}
+
+			for my $row (0 .. $height - 1) {
+				print substr($frame, $row * $stride, $packed_stride);
+			}
+		}
+	' |
+	/usr/local/libexec/equuleus-raw10-unpack "$width" "$height" |
+	ffplay -loglevel warning -f rawvideo -pixel_format bayer_rggb16le \
+		-video_size "${width}x${height}" -framerate 30 \
+		-window_title "Mi 8 Pro Front Camera" -

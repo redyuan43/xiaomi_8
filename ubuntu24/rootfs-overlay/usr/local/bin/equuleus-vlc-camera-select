@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+
+case ${1:-} in
+front)
+	sudo systemctl stop equuleus-vlc-rear.service
+	sudo systemctl start equuleus-vlc-front.service
+	;;
+rear)
+	sudo systemctl stop equuleus-vlc-front.service
+	sudo systemctl start equuleus-vlc-rear.service
+	;;
+*)
+	echo "Usage: $0 {front|rear}" >&2
+	exit 2
+	;;
+esac
