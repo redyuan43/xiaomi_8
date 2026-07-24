@@ -1,0 +1,35 @@
+#!/bin/sh
+set -eu
+
+device=qrtr://0
+attempts=${EQUULEUS_MODEM_ATTEMPTS:-30}
+mode=
+
+modprobe ipa || true
+modprobe rmnet || true
+
+while [ "$attempts" -gt 0 ]; do
+	output=$(qmicli -d "$device" --dms-get-operating-mode 2>/dev/null || true)
+	mode=$(printf '%s\n' "$output" |
+		sed -n "s/.*Mode: '\\([^']*\\)'.*/\\1/p")
+	if [ -n "$mode" ]; then
+		break
+	fi
+	attempts=$((attempts - 1))
+	sleep 1
+done
+
+[ "$attempts" -gt 0 ] || {
+	echo "Qualcomm modem QMI services did not appear on $device" >&2
+	exit 1
+}
+
+if [ "$mode" != "online" ]; then
+	qmicli -d "$device" --dms-set-operating-mode=online
+fi
+
+if ! qmicli -d "$device" \
+	--nas-set-system-selection-preference='lte|umts|gsm,automatic' \
+	>/dev/null; then
+	echo "Warning: could not set LTE-preferred network selection" >&2
+fi

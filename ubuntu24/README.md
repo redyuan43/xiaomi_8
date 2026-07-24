@@ -17,6 +17,8 @@ Linux-only installation after temporary-boot acceptance.
   fuel gauge is exposed through Linux power-supply sysfs.
 - Xfce's top panel reads `bms` directly and shows its charge percentage,
   charging state and battery icon.
+- The SDM845 cellular modem uses QMI over QRTR for control and IPA/RMNET for
+  mobile data. See `docs/CELLULAR.md` for setup and validation.
 
 ## Safety rules
 
@@ -62,6 +64,7 @@ See `docs/ACCEPTANCE.md` for the exact validation and rollback procedure.
 See `docs/AUDIO.md` for WCD9340 microphone and TAS2557 speaker setup.
 See `docs/CHROMIUM-V4L2.md` for the validated Qualcomm Venus hardware-decoding
 path in Chromium.
+See `docs/CELLULAR.md` for the Qualcomm modem and mobile-data path.
 See `docs/INSTALLER.md` for the complete backup, install and release gate.
 
 ## Tailscale

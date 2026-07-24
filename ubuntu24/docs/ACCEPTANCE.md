@@ -76,6 +76,20 @@ Camera acceptance requires all of the following:
 The existing `qcom-venus-decoder` and `qcom-venus-encoder` `/dev/video*`
 nodes are codec devices, not camera success criteria.
 
+## Cellular modem
+
+Run:
+
+```sh
+equuleus-cellular-status
+```
+
+The MSS remote processor must be running, QMI services DMS, NAS, WDS, UIM and
+IPA control must be listed, and the modem operating mode must be `online`.
+With a known-good SIM installed, UIM must report the card as present,
+ModemManager must list the modem, and NetworkManager must be able to establish
+a packet-data connection through an IPA, WWAN or RMNET interface.
+
 ## Rollback
 
 To roll only the physical display back to the stock Xorg driver over USB SSH:

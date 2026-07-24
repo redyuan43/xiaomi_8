@@ -1,0 +1,13 @@
+[Unit]
+Description=Initialize Qualcomm SDM845 cellular modem
+Requires=equuleus-mss.service
+After=equuleus-mss.service
+Before=ModemManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/equuleus-modem-online
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -122,7 +122,9 @@ chroot "$STAGE" make -C /usr/local/src/pd-mapper-1.1 install
 
 mkdir -p "$STAGE/lib/modules" "$STAGE/lib/firmware"
 cp -a "$MODULES_SOURCE" "$STAGE/lib/modules/5.12.0-sdm845"
-for path in qcom ath10k qca regulatory.db regulatory.db.p7s; do
+for path in qcom ath10k qca regulatory.db regulatory.db.p7s \
+    ipa_fws.mdt ipa_fws.b00 ipa_fws.b01 ipa_fws.b02 ipa_fws.b03 \
+    ipa_fws.b04; do
     [ -e "$FIRMWARE_SOURCE/$path" ] && cp -a "$FIRMWARE_SOURCE/$path" "$STAGE/lib/firmware/"
 done
 chroot "$STAGE" depmod -a 5.12.0-sdm845
@@ -181,7 +183,7 @@ chmod 0600 "$STAGE/etc/NetworkManager/system-connections/equuleus-usb.nmconnecti
 chroot "$STAGE" systemctl set-default multi-user.target
 chroot "$STAGE" systemctl mask display-manager.service lightdm.service 2>/dev/null || true
 chroot "$STAGE" systemctl enable NetworkManager.service ssh.service systemd-timesyncd.service
-chroot "$STAGE" systemctl enable tqftpserv.service rmtfs.service equuleus-mss.service pd-mapper.service equuleus-wifi.service equuleus-adsp.service equuleus-audio.service
+chroot "$STAGE" systemctl enable tqftpserv.service rmtfs.service equuleus-mss.service equuleus-modem.service pd-mapper.service equuleus-wifi.service equuleus-adsp.service equuleus-audio.service
 chroot "$STAGE" systemctl enable equuleus-xorg.service equuleus-vnc-firewall.service
 if [ -e "$STAGE/etc/X11/xorg.conf.d/20-equuleus-fbdev.conf" ]; then
     mv "$STAGE/etc/X11/xorg.conf.d/20-equuleus-fbdev.conf" \

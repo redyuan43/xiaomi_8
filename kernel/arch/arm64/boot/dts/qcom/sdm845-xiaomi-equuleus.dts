@@ -600,6 +600,11 @@
 	status = "disabled";
 };
 
+&ipa {
+	status = "okay";
+	memory-region = <&ipa_fw_mem>;
+};
+
 /* Modem/wifi*/
 &mss_pil {
 	status = "okay";

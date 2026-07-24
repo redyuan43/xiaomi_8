@@ -5,6 +5,9 @@ sudo
 openssh-server
 network-manager
 network-manager-gnome
+modemmanager
+libqmi-utils
+mobile-broadband-provider-info
 wpasupplicant
 wireless-regdb
 systemd-timesyncd
